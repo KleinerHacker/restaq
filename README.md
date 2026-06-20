@@ -230,6 +230,57 @@ Target Application
 
 ---
 
+# How to Build
+
+Restaq is a Kotlin / Spring Boot application built with **Gradle** (Kotlin DSL). A Gradle wrapper is included, so no local Gradle installation is required.
+
+## Prerequisites
+
+* **JDK 25** (the project uses a Java toolchain targeting Java 25)
+* No separate Gradle installation needed — use the bundled wrapper (`./gradlew`)
+
+## Build
+
+Linux / macOS:
+
+```bash
+./gradlew build
+```
+
+Windows (PowerShell / CMD):
+
+```powershell
+.\gradlew.bat build
+```
+
+This compiles the sources, runs the tests, and produces an executable Spring Boot JAR under `build/libs/`.
+
+## Run the Tests
+
+```bash
+./gradlew test
+```
+
+## Run the Application
+
+```bash
+./gradlew bootRun
+```
+
+## Build an Executable JAR
+
+```bash
+./gradlew bootJar
+```
+
+The resulting JAR can be started with:
+
+```bash
+java -jar build/libs/restqa-0.0.1-SNAPSHOT.jar
+```
+
+---
+
 # Design Goals
 
 Restaq focuses on:
