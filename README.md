@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/docs/assets/images/logo.png" alt="RESTAQ Logo" width="384"/>
+</p>
+
 # RESTAQ
 
 > REST in. Queue on.
