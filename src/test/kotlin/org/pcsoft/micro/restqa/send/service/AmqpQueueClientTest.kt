@@ -1,15 +1,23 @@
 package org.pcsoft.micro.restqa.send.service
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 
+@ExtendWith(MockitoExtension::class)
 class AmqpQueueClientTest {
 
-    private val rabbitTemplate = mock<RabbitTemplate>()
-    private val client = AmqpQueueClient(rabbitTemplate)
+    @Mock
+    private lateinit var rabbitTemplate: RabbitTemplate
+
+    @InjectMocks
+    private lateinit var client: AmqpQueueClient
 
     @Test
     fun `send routes via configured exchange and routing key`() {
