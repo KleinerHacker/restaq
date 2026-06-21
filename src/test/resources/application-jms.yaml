@@ -1,0 +1,22 @@
+# Demo configuration for the JMS/Artemis profile. Values are placeholders and
+# will be corrected later.
+spring:
+  artemis:
+    mode: native
+    broker-url: tcp://localhost:61616
+    user: artemis
+    password: artemis
+
+restqa:
+  queue:
+    type: jms
+  sender:
+    orders:
+      endpoint: /api/orders
+      queue:
+        name: orders.queue
+  receiver:
+    notifications:
+      endpoint: https://downstream.example.com/notify
+      queue:
+        name: notifications.queue

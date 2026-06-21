@@ -1,3 +1,20 @@
 spring:
   application:
     name: restqa
+
+# Global queue technology selector (amqp = RabbitMQ default, jms = Artemis).
+# Broker connectivity is configured via the Spring Boot standard
+# spring.rabbitmq.* / spring.artemis.* properties (left empty here on purpose).
+restqa:
+  queue:
+    type: amqp
+  # sender:
+  #   <name>:
+  #     endpoint: /...
+  #     queue:
+  #       name: ...
+  # receiver:
+  #   <name>:
+  #     endpoint: https://...
+  #     queue:
+  #       name: ...
