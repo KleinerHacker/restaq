@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.springframework.amqp.rabbit.core.RabbitTemplate
