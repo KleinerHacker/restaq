@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
 import org.pcsoft.micro.restqa.internal.utils.logger
 import org.pcsoft.micro.restqa.send.port.SenderEndpointController
+import org.slf4j.MDC
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.reactive.function.server.RequestPredicates
@@ -13,9 +14,10 @@ import org.springframework.web.reactive.function.server.ServerResponse
 import reactor.core.publisher.Mono
 
 /**
- * Builds the REST routes for the sender side. For every configured `restqa.sender.<flow>`
- * entry a dedicated [SenderEndpointController] is created and bound to the flow's
- * [org.pcsoft.micro.restqa.configuration.SenderProperties.endpoint] path.
+ * Builds the REST routes for the sender side. For every configured `restqa.sender.<key>`
+ * entry a dedicated [SenderEndpointController] is created and bound to the sender's
+ * [org.pcsoft.micro.restqa.configuration.SenderProperties.endpoint] path. The sender key
+ * is exposed to logging via the [MDC] (field `sender`), not threaded through the handler.
  *
  * The paths are only known at runtime (from configuration), hence the functional
  * [RouterFunction] approach instead of static `@RestController` mappings.
@@ -27,6 +29,9 @@ class SenderEndpointConfiguration(
 
     companion object {
         private val log = logger()
+
+        /** MDC field carrying the configured sender key during request handling. */
+        const val MDC_SENDER = "sender"
     }
 
     @PostConstruct
@@ -43,8 +48,10 @@ class SenderEndpointConfiguration(
         }
         val builder = RouterFunctions.route()
         properties.sender.forEach { (senderKey, senderProperties) ->
-            val handler = SenderEndpointController(senderKey, senderProperties)
-            builder.route(RequestPredicates.path(senderProperties.endpoint), handler::handle)
+            val handler = SenderEndpointController(senderProperties)
+            builder.route(RequestPredicates.path(senderProperties.endpoint)) { request ->
+                MDC.putCloseable(MDC_SENDER, senderKey).use { handler.handle(request) }
+            }
             log.info("Registered sender endpoint [{}] on path '{}'", senderKey, senderProperties.endpoint)
         }
         return builder.build()

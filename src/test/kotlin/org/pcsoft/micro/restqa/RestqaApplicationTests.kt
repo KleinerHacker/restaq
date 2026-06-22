@@ -29,6 +29,9 @@ class RestqaApplicationTests {
         @MockitoBean
         private lateinit var amqpAdmin: org.springframework.amqp.core.AmqpAdmin
 
+        @MockitoBean
+        private lateinit var amqpQueueConsumer: org.pcsoft.micro.restqa.receive.controller.AmqpQueueConsumer
+
         @Test
         fun contextLoads() {
         }
@@ -48,6 +51,9 @@ class RestqaApplicationTests {
 
         @MockitoBean
         private lateinit var jmsTemplate: JmsTemplate
+
+        @MockitoBean
+        private lateinit var jmsQueueConsumer: org.pcsoft.micro.restqa.receive.controller.JmsQueueConsumer
 
         @Test
         fun contextLoads() {

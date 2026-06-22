@@ -22,7 +22,7 @@ class SenderEndpointControllerTest {
         val request = mock<ServerRequest> {
             whenever(it.method()).thenReturn(HttpMethod.POST)
         }
-        val handler = SenderEndpointController("orders", properties)
+        val handler = SenderEndpointController(properties)
 
         val response = handler.handle(request).block()
 
