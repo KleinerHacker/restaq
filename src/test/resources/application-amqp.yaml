@@ -1,0 +1,24 @@
+# Demo configuration for the AMQP/RabbitMQ profile. Values are placeholders and
+# will be corrected later.
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+restqa:
+  queue:
+    type: amqp
+  sender:
+    orders:
+      endpoint: /api/orders
+      queue:
+        name: orders.queue
+        exchange: orders.exchange
+        routingKey: orders.created
+  receiver:
+    notifications:
+      endpoint: https://downstream.example.com/notify
+      queue:
+        name: notifications.queue
