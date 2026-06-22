@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.send.service
+package org.pcsoft.micro.restqa.send.controller
 
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 
