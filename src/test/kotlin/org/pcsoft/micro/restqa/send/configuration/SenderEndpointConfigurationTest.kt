@@ -1,9 +1,11 @@
 package org.pcsoft.micro.restqa.send.configuration
 
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.mock
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
 import org.pcsoft.micro.restqa.configuration.SenderProperties
+import org.pcsoft.micro.restqa.send.controller.MessageQueueClient
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.web.reactive.function.server.HandlerStrategies
@@ -32,7 +34,7 @@ class SenderEndpointConfigurationTest {
             ),
         )
 
-        val router = SenderEndpointConfiguration(props).senderRouter()
+        val router = SenderEndpointConfiguration(props, mock<MessageQueueClient>()).senderRouter()
 
         assertNotNull(router.route(requestFor("/api/orders")).block())
         assertNotNull(router.route(requestFor("/api/invoices")).block())
@@ -41,7 +43,7 @@ class SenderEndpointConfigurationTest {
 
     @Test
     fun `empty sender config produces a router that matches nothing`() {
-        val router = SenderEndpointConfiguration(RestqaProperties()).senderRouter()
+        val router = SenderEndpointConfiguration(RestqaProperties(), mock<MessageQueueClient>()).senderRouter()
 
         assertNull(router.route(requestFor("/api/orders")).block())
     }

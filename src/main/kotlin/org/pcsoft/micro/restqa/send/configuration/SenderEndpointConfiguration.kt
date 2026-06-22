@@ -3,6 +3,7 @@ package org.pcsoft.micro.restqa.send.configuration
 import jakarta.annotation.PostConstruct
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
 import org.pcsoft.micro.restqa.internal.utils.logger
+import org.pcsoft.micro.restqa.send.controller.MessageQueueClient
 import org.pcsoft.micro.restqa.send.port.SenderEndpointController
 import org.slf4j.MDC
 import org.springframework.context.annotation.Bean
@@ -25,6 +26,7 @@ import reactor.core.publisher.Mono
 @Configuration
 class SenderEndpointConfiguration(
     private val properties: RestqaProperties,
+    private val queueClient: MessageQueueClient,
 ) {
 
     companion object {
@@ -48,7 +50,7 @@ class SenderEndpointConfiguration(
         }
         val builder = RouterFunctions.route()
         properties.sender.forEach { (senderKey, senderProperties) ->
-            val handler = SenderEndpointController(senderProperties)
+            val handler = SenderEndpointController(senderProperties, queueClient)
             builder.route(RequestPredicates.path(senderProperties.endpoint)) { request ->
                 MDC.putCloseable(MDC_SENDER, senderKey).use { handler.handle(request) }
             }

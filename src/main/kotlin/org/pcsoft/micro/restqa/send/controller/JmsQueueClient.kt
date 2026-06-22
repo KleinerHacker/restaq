@@ -21,11 +21,19 @@ class JmsQueueClient(
         private val log = logger()
     }
 
-    override fun send(endpoint: QueueEndpointProperties, payload: ByteArray) {
+    override fun send(endpoint: QueueEndpointProperties, payload: ByteArray, headers: Map<String, String>) {
         log.debug(
-            "Publishing {} bytes via JMS (destination='{}')",
-            payload.size, endpoint.name,
+            "Publishing {} bytes via JMS (destination='{}', headers={})",
+            payload.size, endpoint.name, headers.size,
         )
-        jmsTemplate.convertAndSend(endpoint.name, payload)
+        jmsTemplate.convertAndSend(endpoint.name, payload) { message ->
+            // JMS property names must be valid Java identifiers, so e.g. the '-' in
+            // "Content-Type" is mapped to '_' ("Content_Type").
+            headers.forEach { (name, value) -> message.setStringProperty(jmsPropertyName(name), value) }
+            message
+        }
     }
+
+    private fun jmsPropertyName(header: String): String =
+        header.map { if (it.isLetterOrDigit() || it == '_') it else '_' }.joinToString("")
 }

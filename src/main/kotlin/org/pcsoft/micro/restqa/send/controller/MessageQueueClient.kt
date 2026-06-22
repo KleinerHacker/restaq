@@ -10,7 +10,8 @@ import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
  */
 interface MessageQueueClient {
     /**
-     * Publish [payload] onto the queue described by [endpoint].
+     * Publish [payload] onto the queue described by [endpoint], carrying [headers]
+     * (typically the inbound HTTP headers) as message properties/headers.
      */
-    fun send(endpoint: QueueEndpointProperties, payload: ByteArray)
+    fun send(endpoint: QueueEndpointProperties, payload: ByteArray, headers: Map<String, String> = emptyMap())
 }

@@ -22,13 +22,16 @@ class AmqpQueueClient(
         private val log = logger()
     }
 
-    override fun send(endpoint: QueueEndpointProperties, payload: ByteArray) {
+    override fun send(endpoint: QueueEndpointProperties, payload: ByteArray, headers: Map<String, String>) {
         val exchange = endpoint.exchange ?: ""
         val routingKey = endpoint.routingKey ?: endpoint.name
         log.debug(
-            "Publishing {} bytes via AMQP (exchange='{}', routingKey='{}')",
-            payload.size, exchange, routingKey,
+            "Publishing {} bytes via AMQP (exchange='{}', routingKey='{}', headers={})",
+            payload.size, exchange, routingKey, headers.size,
         )
-        rabbitTemplate.convertAndSend(exchange, routingKey, payload)
+        rabbitTemplate.convertAndSend(exchange, routingKey, payload) { message ->
+            headers.forEach { (name, value) -> message.messageProperties.setHeader(name, value) }
+            message
+        }
     }
 }
