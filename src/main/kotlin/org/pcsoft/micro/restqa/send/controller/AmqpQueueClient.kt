@@ -1,7 +1,7 @@
 package org.pcsoft.micro.restqa.send.controller
 
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
-import org.slf4j.LoggerFactory
+import org.pcsoft.micro.restqa.internal.utils.logger
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
@@ -18,14 +18,16 @@ class AmqpQueueClient(
     private val rabbitTemplate: RabbitTemplate,
 ) : MessageQueueClient {
 
-    private val log = LoggerFactory.getLogger(javaClass)
+    companion object {
+        private val log = logger()
+    }
 
-    override fun send(flow: String, endpoint: QueueEndpointProperties, payload: ByteArray) {
+    override fun send(endpoint: QueueEndpointProperties, payload: ByteArray) {
         val exchange = endpoint.exchange ?: ""
         val routingKey = endpoint.routingKey ?: endpoint.name
         log.debug(
-            "[{}] Publishing {} bytes via AMQP (exchange='{}', routingKey='{}')",
-            flow, payload.size, exchange, routingKey,
+            "Publishing {} bytes via AMQP (exchange='{}', routingKey='{}')",
+            payload.size, exchange, routingKey,
         )
         rabbitTemplate.convertAndSend(exchange, routingKey, payload)
     }

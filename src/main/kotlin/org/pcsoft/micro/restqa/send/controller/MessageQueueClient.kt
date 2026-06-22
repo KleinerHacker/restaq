@@ -11,8 +11,6 @@ import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 interface MessageQueueClient {
     /**
      * Publish [payload] onto the queue described by [endpoint].
-     *
-     * @param flow the configuration map key of the originating flow, used for logging.
      */
-    fun send(flow: String, endpoint: QueueEndpointProperties, payload: ByteArray)
+    fun send(endpoint: QueueEndpointProperties, payload: ByteArray)
 }

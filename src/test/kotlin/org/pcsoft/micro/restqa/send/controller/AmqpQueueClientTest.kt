@@ -27,7 +27,7 @@ class AmqpQueueClientTest {
             routingKey = "orders.created",
         )
 
-        client.send("orders", endpoint, payload)
+        client.send(endpoint, payload)
 
         verify(rabbitTemplate).convertAndSend("orders.exchange", "orders.created", payload)
     }
@@ -37,7 +37,7 @@ class AmqpQueueClientTest {
         val payload = "hello".toByteArray()
         val endpoint = QueueEndpointProperties(name = "orders.queue")
 
-        client.send("orders", endpoint, payload)
+        client.send(endpoint, payload)
 
         verify(rabbitTemplate).convertAndSend("", "orders.queue", payload)
     }

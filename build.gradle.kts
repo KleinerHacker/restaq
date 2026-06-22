@@ -73,7 +73,7 @@ plugins.withId("org.jetbrains.kotlin.jvm") {
 	plugins.withId("app.cash.licensee") {
 		extensions.configure<app.cash.licensee.LicenseeExtension> {
 			listOf(
-				"Apache-2.0", "EPL-2.0"
+				"Apache-2.0", "EPL-1.0", "EPL-2.0", "MIT-0"
 			).forEach(::allow)
 
 			listOf(

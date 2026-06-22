@@ -28,7 +28,7 @@ class JmsQueueClientTest {
             routingKey = "ignored.key",
         )
 
-        client.send("orders", endpoint, payload)
+        client.send(endpoint, payload)
 
         verify(jmsTemplate).convertAndSend("orders.queue", payload)
     }
