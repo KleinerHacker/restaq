@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component
  * are ignored.
  */
 @Component
-@ConditionalOnProperty(prefix = "restqa.queue", name = ["type"], havingValue = "amqp", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "restqa.queue", name = ["type"], havingValue = "jms")
 class JmsQueueClient(
     private val jmsTemplate: JmsTemplate,
 ) : MessageQueueClient {

@@ -38,6 +38,13 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testImplementation("org.powermock:powermock-reflect:2.0.9")
+	// Integration tests: real brokers via Testcontainers (predefined modules) + a real
+	// downstream HTTP endpoint via WireMock.
+	testImplementation(platform("org.testcontainers:testcontainers-bom:1.21.3"))
+	testImplementation("org.testcontainers:junit-jupiter")
+	testImplementation("org.testcontainers:rabbitmq")        // RabbitMQContainer
+	testImplementation("org.testcontainers:activemq")        // ArtemisContainer
+	testImplementation("org.wiremock:wiremock-standalone:3.13.1")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
