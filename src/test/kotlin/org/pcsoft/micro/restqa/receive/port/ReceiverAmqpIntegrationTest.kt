@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.receive.controller
+package org.pcsoft.micro.restqa.receive.port
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
@@ -54,8 +54,8 @@ class ReceiverAmqpIntegrationTest {
             registry.add("spring.rabbitmq.username", rabbit::getAdminUsername)
             registry.add("spring.rabbitmq.password", rabbit::getAdminPassword)
 
-            registry.add("restqa.queue.type") { "amqp" }
-            registry.add("restqa.receiver.test.endpoint") { "http://localhost:${wireMock.port()}$PATH" }
+            registry.add("restqa.type") { "amqp" }
+            registry.add("restqa.receiver.test.rest.url") { "http://localhost:${wireMock.port()}$PATH" }
             registry.add("restqa.receiver.test.queue.name") { QUEUE }
         }
 

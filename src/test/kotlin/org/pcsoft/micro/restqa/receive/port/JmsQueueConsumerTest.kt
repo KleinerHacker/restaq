@@ -1,21 +1,21 @@
-package org.pcsoft.micro.restqa.receive.controller
+package org.pcsoft.micro.restqa.receive.port
 
 import jakarta.jms.ConnectionFactory
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.pcsoft.micro.restqa.configuration.ReceiverProperties
+import org.pcsoft.micro.restqa.configuration.ReceiverRestProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
-import org.powermock.reflect.Whitebox
-import org.springframework.jms.listener.DefaultMessageListenerContainer
 import org.springframework.web.reactive.function.client.WebClient
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class JmsQueueConsumerTest {
 
     private fun receiver(name: String) = ReceiverProperties(
-        endpoint = "https://downstream.example.com/$name",
+        rest = ReceiverRestProperties(url = "https://downstream.example.com/$name"),
         queue = QueueEndpointProperties(name = name),
     )
 
@@ -27,33 +27,22 @@ class JmsQueueConsumerTest {
                 "invoices" to receiver("invoices.queue"),
             ),
         )
-        val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), props, WebClient.builder()).apply {
-            start()
-        }
-
-        @Suppress("UNCHECKED_CAST") val containers = Whitebox.getField(
-            JmsQueueConsumer::class.java,
-            "containers"
-        )[consumer] as List<DefaultMessageListenerContainer>
+        val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), props, WebClient.builder())
+        val containers = consumer.buildContainers()
 
         assertEquals(2, containers.size)
         assertEquals(
             setOf("orders.queue", "invoices.queue"),
             containers.map { it.destinationName }.toSet(),
         )
-        assertFalse(containers.all { it.isPubSubDomain }, "must consume from queues, not topics")
+        assertFalse(containers.any { it.isPubSubDomain }, "must consume from queues, not topics")
+        assertTrue(containers.all { it.isSessionTransacted }, "must use transacted sessions for retry")
     }
 
     @Test
     fun `no receivers yields no containers`() {
-        val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), RestqaProperties(), WebClient.builder()).apply {
-            start()
-        }
-
-        @Suppress("UNCHECKED_CAST") val containers = Whitebox.getField(
-            JmsQueueConsumer::class.java,
-            "containers"
-        )[consumer] as List<DefaultMessageListenerContainer>
+        val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), RestqaProperties(), WebClient.builder())
+        val containers = consumer.buildContainers()
 
         assertEquals(0, containers.size)
     }

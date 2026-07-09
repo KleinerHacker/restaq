@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -23,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
  * Only a sender is configured (no receiver), so nothing competes for / drains the queue.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
 @Testcontainers
 class SenderAmqpIntegrationTest {
 
@@ -43,8 +45,8 @@ class SenderAmqpIntegrationTest {
             registry.add("spring.rabbitmq.username", rabbit::getAdminUsername)
             registry.add("spring.rabbitmq.password", rabbit::getAdminPassword)
 
-            registry.add("restqa.queue.type") { "amqp" }
-            registry.add("restqa.sender.test.endpoint") { ENDPOINT }
+            registry.add("restqa.type") { "amqp" }
+            registry.add("restqa.sender.test.rest.path") { ENDPOINT }
             registry.add("restqa.sender.test.queue.name") { QUEUE }
         }
     }
@@ -63,7 +65,7 @@ class SenderAmqpIntegrationTest {
             .header("custom", "demo")
             .bodyValue("Hello World".toByteArray())
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isAccepted
 
         val message: Message? = rabbitTemplate.receive(QUEUE, 10_000)
         assertThat(message).withFailMessage("expected a message on queue '%s'", QUEUE).isNotNull
@@ -74,8 +76,9 @@ class SenderAmqpIntegrationTest {
         val headers = message.messageProperties.headers
         // Custom header survives unchanged.
         assertThat(headers).containsEntry("custom", "demo")
-        // The other inbound HTTP headers are forwarded as AMQP headers too.
-        assertThat(headers).containsKeys("Content-Type", "host", "content-length")
+        // Content-Type is propagated; transport headers (host, content-length) are filtered.
+        assertThat(headers).containsKey("Content-Type")
+        assertThat(headers).doesNotContainKey("host")
         assertThat(headers["Content-Type"].toString()).contains(MediaType.TEXT_PLAIN_VALUE)
     }
 }

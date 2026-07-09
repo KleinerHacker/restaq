@@ -6,15 +6,16 @@ spring:
 # Broker connectivity is configured via the Spring Boot standard
 # spring.rabbitmq.* / spring.artemis.* properties (left empty here on purpose).
 restqa:
-  queue:
-    type: amqp
+  type: amqp
   # sender:
   #   <name>:
-  #     endpoint: /...
+  #     rest:
+  #       path: /...
   #     queue:
   #       name: ...
   # receiver:
   #   <name>:
-  #     endpoint: https://...
+  #     rest:
+  #       url: https://...
   #     queue:
   #       name: ...

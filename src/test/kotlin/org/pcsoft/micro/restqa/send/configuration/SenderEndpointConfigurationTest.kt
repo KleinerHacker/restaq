@@ -5,7 +5,8 @@ import org.mockito.kotlin.mock
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
 import org.pcsoft.micro.restqa.configuration.SenderProperties
-import org.pcsoft.micro.restqa.send.controller.MessageQueueClient
+import org.pcsoft.micro.restqa.configuration.SenderRestProperties
+import org.pcsoft.micro.restqa.send.port.MessageQueueClient
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.web.reactive.function.server.HandlerStrategies
@@ -21,7 +22,7 @@ class SenderEndpointConfigurationTest {
     }
 
     private fun sender(endpoint: String) = SenderProperties(
-        endpoint = endpoint,
+        rest = SenderRestProperties(path = endpoint),
         queue = QueueEndpointProperties(name = "queue"),
     )
 

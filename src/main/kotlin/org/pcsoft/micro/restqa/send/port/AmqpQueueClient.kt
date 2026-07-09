@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.send.controller
+package org.pcsoft.micro.restqa.send.port
 
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.pcsoft.micro.restqa.internal.utils.logger
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
  * used (direct-to-queue via the default exchange).
  */
 @Component
-@ConditionalOnProperty(prefix = "restqa.queue", name = ["type"], havingValue = "amqp", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "restqa", name = ["type"], havingValue = "amqp", matchIfMissing = true)
 class AmqpQueueClient(
     private val rabbitTemplate: RabbitTemplate,
 ) : MessageQueueClient {

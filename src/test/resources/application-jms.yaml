@@ -8,15 +8,16 @@ spring:
     password: artemis
 
 restqa:
-  queue:
-    type: jms
+  type: jms
   sender:
     orders:
-      endpoint: /api/orders
+      rest:
+        path: /api/orders
       queue:
         name: orders.queue
   receiver:
     notifications:
-      endpoint: https://downstream.example.com/notify
+      rest:
+        url: https://downstream.example.com/notify
       queue:
         name: notifications.queue

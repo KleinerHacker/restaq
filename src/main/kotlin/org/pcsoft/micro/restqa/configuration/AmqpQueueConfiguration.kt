@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 /**
- * Activates the AMQP/RabbitMQ message-queue client when `restqa.queue.type` is `amqp`
+ * Activates the AMQP/RabbitMQ message-queue client when `restqa.type` is `amqp`
  * (the default when the property is absent). Broker connectivity itself is configured
  * through the Spring Boot standard `spring.rabbitmq.*` properties.
  *
@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Configuration
  * once a connection is established.
  */
 @Configuration
-@ConditionalOnProperty(prefix = "restqa.queue", name = ["type"], havingValue = "amqp", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "restqa", name = ["type"], havingValue = "amqp", matchIfMissing = true)
 class AmqpQueueConfiguration(
     private val properties: RestqaProperties,
 ) {

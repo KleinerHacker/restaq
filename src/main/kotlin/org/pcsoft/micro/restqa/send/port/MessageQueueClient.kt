@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.send.controller
+package org.pcsoft.micro.restqa.send.port
 
 import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 
@@ -6,7 +6,7 @@ import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
  * Technology-agnostic abstraction for publishing a message onto a queue.
  *
  * Exactly one implementation is active at runtime, selected globally via
- * `restqa.queue.type` (AMQP/RabbitMQ by default, or JMS/Artemis).
+ * `restqa.type` (AMQP/RabbitMQ by default, or JMS/Artemis).
  */
 interface MessageQueueClient {
     /**

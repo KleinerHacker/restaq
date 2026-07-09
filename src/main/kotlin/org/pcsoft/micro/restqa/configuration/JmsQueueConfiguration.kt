@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.jms.core.JmsTemplate
 
 /**
- * Activates the JMS/Artemis message-queue client when `restqa.queue.type` is `jms`.
+ * Activates the JMS/Artemis message-queue client when `restqa.type` is `jms`.
  * Broker connectivity is configured through the Spring Boot standard
  * `spring.artemis.*` properties.
  *
@@ -18,7 +18,7 @@ import org.springframework.jms.core.JmsTemplate
  * validates/logs the configured destination names at startup.
  */
 @Configuration
-@ConditionalOnProperty(prefix = "restqa.queue", name = ["type"], havingValue = "jms")
+@ConditionalOnProperty(prefix = "restqa", name = ["type"], havingValue = "jms")
 class JmsQueueConfiguration(
     private val properties: RestqaProperties,
 ) {

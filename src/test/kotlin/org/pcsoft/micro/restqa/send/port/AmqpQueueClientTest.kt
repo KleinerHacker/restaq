@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.send.controller
+package org.pcsoft.micro.restqa.send.port
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

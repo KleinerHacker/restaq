@@ -1,53 +1,112 @@
 package org.pcsoft.micro.restqa.send.port
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 import org.pcsoft.micro.restqa.configuration.SenderProperties
+import org.pcsoft.micro.restqa.internal.utils.HeaderFilter
 import org.pcsoft.micro.restqa.internal.utils.logger
-import org.pcsoft.micro.restqa.send.controller.MessageQueueClient
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ProblemDetail
+import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import java.net.URI
 
 /**
  * Handles incoming HTTP requests for a single configured sender.
  *
  * One instance is created per `restqa.sender.<key>` entry by
  * [org.pcsoft.micro.restqa.send.configuration.SenderEndpointConfiguration] and bound to
- * the sender's [SenderProperties.endpoint] path. The sender key is provided via the MDC
+ * the sender's [SenderProperties.rest] path. The sender key is provided via the MDC
  * (set by the configuration), not passed in here.
  *
  * The inbound request body is read and forwarded onto the configured queue
  * ([SenderProperties.queue]) via the active [MessageQueueClient], together with the
  * request's HTTP headers (multi-valued headers are joined with ", "). A request without
- * a body forwards an empty payload. On success the handler replies `200 OK` (empty body).
+ * a body forwards an empty payload. On success the handler replies `202 Accepted` (empty body).
+ *
+ * Error responses use [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
+ * via Spring's built-in [ProblemDetail]:
+ * - **413 Payload Too Large** – when the request body exceeds `restqa.max-payload-size`
+ * - **502 Bad Gateway** – when the queue broker is unreachable or rejects the message
  */
 class SenderEndpointController(
     private val properties: SenderProperties,
     private val queueClient: MessageQueueClient,
+    private val maxPayloadSize: DataSize? = null,
 ) {
 
     companion object {
         private val log = logger()
+        private val PROBLEM_JSON = MediaType.valueOf("application/problem+json")
     }
 
     fun handle(request: ServerRequest): Mono<ServerResponse> {
-        log.debug(
-            "Received {} {} -> forwarding to queue '{}'",
-            request.method(), properties.endpoint, properties.queue.name,
-        )
+        log.info("Request received on '{}'", properties.rest.path)
         // Flatten multi-valued HTTP headers into single comma-joined values.
         val httpHeaders = request.headers().asHttpHeaders()
-        val headers = httpHeaders.headerNames().associateWith { name ->
-            httpHeaders.getValuesAsList(name).joinToString(", ")
-        }
+        val headers = HeaderFilter.filter(
+            httpHeaders.headerNames().associateWith { name ->
+                httpHeaders.getValuesAsList(name).joinToString(", ")
+            }
+        )
         return request.bodyToMono(ByteArray::class.java)
-            // No body -> forward an empty payload instead of skipping the send.
             .defaultIfEmpty(ByteArray(0))
             .flatMap { payload ->
+                // Check payload size limit.
+                val sizeCheck = checkPayloadSize(payload, request)
+                if (sizeCheck is Either.Left) {
+                    return@flatMap problemResponse(sizeCheck.value)
+                }
                 // The queue client is blocking; keep it off the event loop.
-                Mono.fromCallable { queueClient.send(properties.queue, payload, headers) }
+                Mono.fromCallable { sendToQueue(payload, headers) }
                     .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap { result ->
+                        result.fold(
+                            ifLeft = { problem -> problemResponse(problem) },
+                            ifRight = {
+                                log.info("Message placed on queue '{}'", properties.queue.name)
+                                ServerResponse.accepted().build()
+                            },
+                        )
+                    }
             }
-            .then(ServerResponse.ok().build())
     }
+
+    private fun sendToQueue(
+        payload: ByteArray,
+        headers: Map<String, String>,
+    ): Either<ProblemDetail, Unit> =
+        try {
+            queueClient.send(properties.queue, payload, headers)
+            Unit.right()
+        } catch (ex: Exception) {
+            log.error("Failed to publish message to queue '{}': {}", properties.queue.name, ex.message, ex)
+            ProblemDetail.forStatus(HttpStatus.BAD_GATEWAY).apply {
+                type = URI.create("urn:restqa:error:broker-unavailable")
+                title = "Bad Gateway"
+                detail = "Failed to deliver message to queue '${this@SenderEndpointController.properties.queue.name}': ${ex.message}"
+                instance = URI.create(this@SenderEndpointController.properties.rest.path)
+            }.left()
+        }
+
+    private fun checkPayloadSize(payload: ByteArray, request: ServerRequest): Either<ProblemDetail, Unit> {
+        val limit = maxPayloadSize ?: return Unit.right()
+        if (payload.size <= limit.toBytes()) return Unit.right()
+        return ProblemDetail.forStatus(HttpStatus.CONTENT_TOO_LARGE).apply {
+            type = URI.create("urn:restqa:error:payload-too-large")
+            title = "Payload Too Large"
+            detail = "Request body of ${payload.size} bytes exceeds the configured limit of $limit."
+            instance = URI.create(request.path())
+        }.left()
+    }
+
+    private fun problemResponse(problem: ProblemDetail): Mono<ServerResponse> =
+        ServerResponse.status(problem.status)
+            .contentType(PROBLEM_JSON)
+            .bodyValue(problem)
 }

@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.receive.controller
+package org.pcsoft.micro.restqa.receive.port
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
@@ -55,8 +55,8 @@ class ReceiverJmsIntegrationTest {
             registry.add("spring.artemis.user", artemis::getUser)
             registry.add("spring.artemis.password", artemis::getPassword)
 
-            registry.add("restqa.queue.type") { "jms" }
-            registry.add("restqa.receiver.test.endpoint") { "http://localhost:${wireMock.port()}$PATH" }
+            registry.add("restqa.type") { "jms" }
+            registry.add("restqa.receiver.test.rest.url") { "http://localhost:${wireMock.port()}$PATH" }
             registry.add("restqa.receiver.test.queue.name") { QUEUE }
         }
 

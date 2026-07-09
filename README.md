@@ -6,344 +6,129 @@
 
 > REST in. Queue on.
 
-**Restaq** is a lightweight, Spring Boot based messaging gateway designed for crossing network boundaries using asynchronous messaging.
+**RESTAQ** is a lightweight, Spring Boot–based messaging gateway designed for crossing network boundaries using asynchronous messaging.
 
-It exposes configurable REST endpoints that forward incoming requests into messaging infrastructures such as **AMQP** and **JMS**, while also supporting the reverse direction through proactive HTTP callback delivery.
-
-Restaq acts as a protocol bridge between synchronous HTTP communication and asynchronous message-oriented middleware.
+It exposes configurable REST POST endpoints that forward incoming requests into messaging infrastructures such as **AMQP** (RabbitMQ) and **JMS** (ActiveMQ Artemis), while also supporting the reverse direction through proactive HTTP callback delivery.
 
 ---
 
-# Features
+## Features
 
-* REST-to-Queue gateway
-* Queue-to-REST consumer delivery
-* Supports:
-
-  * AMQP
-  * JMS
-* Fully configurable inbound and outbound endpoints
-* Optional XML schema validation (XSD)
-* Optional JSON schema validation
-* Supports arbitrary payload formats
-* Transparent HTTP header propagation
-* Spring Boot based
-* Stateless and horizontally scalable
-* Network boundary decoupling
-* DMZ/integration-zone friendly architecture
+- REST → Queue gateway (sender)
+- Queue → REST consumer delivery (receiver)
+- Supports AMQP and JMS
+- Configurable retry with backoff and dead-letter queue support
+- Message time-to-live enforcement
+- RFC 9457 Problem Details error responses
+- Transparent HTTP header propagation (with TLS/transport filtering)
+- Configurable payload size limits
+- Stateless and horizontally scalable
+- DMZ / integration-zone friendly architecture
 
 ---
 
-# Architecture
+## How It Works
 
-Restaq is designed to decouple systems across network segments, security zones, or trust boundaries.
-
-Typical use cases include:
-
-* DMZ integration gateways
-* Enterprise service boundaries
-* Async API buffering
-* Queue-backed integration layers
-* Legacy system bridging
-* Network isolation
-* Burst traffic buffering
-* Temporary outage decoupling
-
-The system consists of two major components:
-
-## Sender
-
-The sender exposes REST endpoints that external systems can call.
-
-Incoming HTTP requests are transformed into queue messages and forwarded to the configured messaging backend.
-
-## Receiver
-
-The receiver acts as a message consumer.
-
-It listens to configured queues/topics and proactively invokes configured HTTP endpoints in downstream systems.
-
-This enables asynchronous end-to-end communication while preserving HTTP semantics where useful.
-
----
-
-# Messaging Support
-
-Restaq currently supports:
-
-| Protocol | Description                                             |
-| -------- | ------------------------------------------------------- |
-| AMQP     | RabbitMQ and compatible brokers                         |
-| JMS      | ActiveMQ, Artemis, IBM MQ, and JMS-compatible providers |
-
-The messaging layer is abstracted to allow flexible integration into existing enterprise environments.
-
----
-
-# Payload Handling
-
-Restaq intentionally does not enforce a strict payload model.
-
-Any payload can be transported, including:
-
-* JSON
-* XML
-* Plain text
-* Binary data
-* Proprietary formats
-
-The HTTP request body is transferred as the message payload without modification unless validation or transformation is explicitly configured.
-
----
-
-# Schema Validation
-
-Optional schema validation can be enabled per endpoint.
-
-## XML Validation
-
-XML payloads can be validated using XSD schemas.
-
-Supported features include:
-
-* namespace-aware validation
-* strict schema enforcement
-* configurable validation failure handling
-
-## JSON Validation
-
-JSON payloads can be validated using JSON Schema definitions.
-
-Validation can be configured independently for each endpoint.
-
----
-
-# HTTP Header Propagation
-
-Restaq preserves HTTP metadata by automatically transferring incoming HTTP headers into message properties.
-
-## Mapping Rules
-
-| HTTP Element | Message Representation |
-| ------------ | ---------------------- |
-| HTTP Headers | Message Properties     |
-| HTTP Body    | Message Payload        |
-
-All HTTP headers are propagated except:
-
-* URL/path information
-* transport-specific connection metadata
-
-This allows downstream consumers to access:
-
-* authentication metadata
-* correlation IDs
-* tracing headers
-* custom integration headers
-* content type information
-
----
-
-# Endpoint Model
-
-Endpoints are fully configurable.
-
-Each endpoint can define:
-
-* transport type
-* destination queue/topic
-* schema validation
-* authentication
-* timeout handling
-* retry behavior
-* header mapping rules
-
----
-
-# Sender Flow
-
-```text
-Client
-  -> RESTAQ REST Endpoint
-    -> Validation (optional)
-      -> Header Mapping
-        -> Queue Message
-          -> AMQP/JMS Broker
+```
+Client ──POST──▶ RESTAQ Sender ──▶ Queue ──▶ RESTAQ Receiver ──POST──▶ Target
 ```
 
----
+**Sender:** Accepts HTTP POST requests, filters headers, validates payload size, and places the message on a queue. Returns `202 Accepted` on success or `502 Bad Gateway` with Problem Details on failure.
 
-# Receiver Flow
-
-```text
-AMQP/JMS Broker
-  -> RESTAQ Consumer
-    -> Validation (optional)
-      -> HTTP Request Creation
-        -> Target REST Endpoint
-```
+**Receiver:** Consumes messages from a queue and delivers them via HTTP POST to a configured target URL. Retries with backoff on failure, injects `X-Retry-Count` header, and routes to the broker's DLQ after exhausting retries.
 
 ---
 
-# Typical Deployment
+## Quick Start
 
-```text
-External Network
-    |
-    | HTTPS
-    v
-+-----------+
-|  RESTAQ   |
-+-----------+
-    |
-    | AMQP / JMS
-    v
-Internal Messaging Infrastructure
-```
+### Prerequisites
 
-Or in reverse-consumer mode:
+- JDK 25
+- Docker (for integration tests)
+- A message broker (RabbitMQ or ActiveMQ Artemis)
 
-```text
-Queue
-   |
-   v
-+-----------+
-|  RESTAQ   |
-+-----------+
-   |
-   | HTTPS Callback
-   v
-Target Application
-```
-
----
-
-# Technology Stack
-
-* Java
-* Spring Boot
-* Spring Web
-* Spring AMQP
-* Spring JMS
-* Jackson
-* XML Validation APIs
-
----
-
-# How to Build
-
-Restaq is a Kotlin / Spring Boot application built with **Gradle** (Kotlin DSL). A Gradle wrapper is included, so no local Gradle installation is required.
-
-## Prerequisites
-
-* **JDK 25** (the project uses a Java toolchain targeting Java 25)
-* No separate Gradle installation needed — use the bundled wrapper (`./gradlew`)
-
-## Build
-
-Linux / macOS:
+### Build
 
 ```bash
 ./gradlew build
 ```
 
-Windows (PowerShell / CMD):
-
-```powershell
-.\gradlew.bat build
-```
-
-This compiles the sources, runs the tests, and produces an executable Spring Boot JAR under `build/libs/`.
-
-## Run the Tests
-
-```bash
-./gradlew test
-```
-
-## Run the Application
+### Run
 
 ```bash
 ./gradlew bootRun
 ```
 
-## Build an Executable JAR
+### Minimal Configuration
 
-```bash
-./gradlew bootJar
+```yaml
+restqa:
+  type: amqp
+  sender:
+    orders:
+      rest:
+        path: /api/orders
+      queue:
+        name: orders.queue
+  receiver:
+    notifications:
+      rest:
+        url: http://downstream:8080/notify
+      queue:
+        name: notifications.queue
+      retry:
+        max-retries: 5
+        backoff-period: 10s
 ```
 
-The resulting JAR can be started with:
+---
+
+## Configuration Reference
+
+| Property | Description | Default |
+|----------|-------------|---------|
+| `restqa.type` | Queue technology: `amqp` or `jms` | `amqp` |
+| `restqa.max-payload-size` | Maximum request body size (e.g. `10MB`) | *(none)* |
+| `restqa.sender.<name>.rest.path` | REST endpoint path | — |
+| `restqa.sender.<name>.queue.name` | Queue/destination name | — |
+| `restqa.sender.<name>.queue.exchange` | AMQP exchange (optional) | — |
+| `restqa.sender.<name>.queue.routingKey` | AMQP routing key (optional) | queue name |
+| `restqa.receiver.<name>.rest.url` | Target callback URL | — |
+| `restqa.receiver.<name>.queue.name` | Queue/destination name | — |
+| `restqa.receiver.<name>.retry.max-retries` | Max delivery attempts | `3` |
+| `restqa.receiver.<name>.retry.backoff-period` | Delay between retries | `5s` |
+| `restqa.receiver.<name>.time-to-live` | Max message age | *(none)* |
+
+Broker connectivity uses Spring Boot standard properties (`spring.rabbitmq.*` / `spring.artemis.*`).
+
+---
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Language | Kotlin |
+| Framework | Spring Boot 4 |
+| Web Layer | Spring WebFlux |
+| Messaging | Spring AMQP, Spring JMS |
+| Error Handling | Arrow (`Either`), Spring ProblemDetail |
+| Build | Gradle (Kotlin DSL), JDK 25 |
+| Testing | JUnit 5, Mockito-Kotlin, Testcontainers, WireMock |
+
+---
+
+## Documentation
+
+Full documentation is available via MkDocs in the [`docs/`](docs/) directory:
 
 ```bash
-java -jar build/libs/restqa-0.0.1-SNAPSHOT.jar
+cd docs
+pip install mkdocs-material
+mkdocs serve
 ```
 
 ---
 
-# Design Goals
+## License
 
-Restaq focuses on:
-
-* simplicity
-* transparency
-* protocol decoupling
-* operational robustness
-* minimal payload assumptions
-* infrastructure compatibility
-
-The system intentionally avoids introducing proprietary payload contracts unless explicitly configured.
-
----
-
-# Example Use Cases
-
-## DMZ Gateway
-
-Expose a controlled REST interface externally while forwarding requests asynchronously into internal infrastructure.
-
-## Async Integration Layer
-
-Convert synchronous REST calls into durable queue-based processing.
-
-## Legacy Queue Integration
-
-Provide modern REST interfaces for legacy JMS systems.
-
-## Outage Buffering
-
-Protect downstream systems by buffering incoming traffic through queues.
-
-## Cross-Network Bridging
-
-Transfer messages securely between isolated network segments.
-
----
-
-# Future Ideas
-
-Potential future extensions may include:
-
-* Kafka support
-* MQTT support
-* payload transformation pipelines
-* OpenAPI integration
-* tracing/observability modules
-* dead letter handling UI
-* rate limiting
-* OAuth2/JWT integration
-* multi-tenant routing
-
----
-
-# Philosophy
-
-Restaq is intentionally infrastructure-focused.
-
-It does not attempt to replace:
-
-* API gateways
-* ESBs
-* workflow engines
-
-Instead, it provides a lightweight and transparent bridge between HTTP and messaging systems.
+See [LICENSE](LICENSE) for details.

@@ -8,17 +8,18 @@ spring:
     password: guest
 
 restqa:
-  queue:
-    type: amqp
+  type: amqp
   sender:
     orders:
-      endpoint: /api/orders
+      rest:
+        path: /api/orders
       queue:
         name: orders.queue
         exchange: orders.exchange
         routingKey: orders.created
   receiver:
     notifications:
-      endpoint: https://downstream.example.com/notify
+      rest:
+        url: https://downstream.example.com/notify
       queue:
         name: notifications.queue

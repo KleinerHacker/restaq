@@ -1,0 +1,42 @@
+site_name: RESTAQ
+site_description: REST in. Queue on. — A lightweight messaging gateway for crossing network boundaries.
+site_url: ""
+docs_dir: docs/docs
+
+theme:
+  name: material
+  logo: assets/images/icon.png
+  favicon: assets/images/icon.png
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Configuration: configuration.md
+  - Error Handling: error-handling.md
+  - Deployment: deployment.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list

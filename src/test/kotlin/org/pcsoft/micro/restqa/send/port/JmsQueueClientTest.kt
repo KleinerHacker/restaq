@@ -1,4 +1,4 @@
-package org.pcsoft.micro.restqa.send.controller
+package org.pcsoft.micro.restqa.send.port
 
 import jakarta.jms.Message
 import org.junit.jupiter.api.Test

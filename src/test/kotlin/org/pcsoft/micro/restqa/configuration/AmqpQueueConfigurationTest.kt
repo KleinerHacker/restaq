@@ -20,7 +20,7 @@ class AmqpQueueConfigurationTest {
             props(
                 sender = mapOf(
                     "orders" to SenderProperties(
-                        endpoint = "/api/orders",
+                        rest = SenderRestProperties(path = "/api/orders"),
                         queue = QueueEndpointProperties(
                             name = "orders.queue",
                             exchange = "orders.exchange",
@@ -30,7 +30,7 @@ class AmqpQueueConfigurationTest {
                 ),
                 receiver = mapOf(
                     "notifications" to ReceiverProperties(
-                        endpoint = "https://downstream.example.com/notify",
+                        rest = ReceiverRestProperties(url = "https://downstream.example.com/notify"),
                         queue = QueueEndpointProperties(name = "notifications.queue"),
                     ),
                 ),
@@ -58,7 +58,7 @@ class AmqpQueueConfigurationTest {
             props(
                 sender = mapOf(
                     "orders" to SenderProperties(
-                        endpoint = "/api/orders",
+                        rest = SenderRestProperties(path = "/api/orders"),
                         queue = QueueEndpointProperties(name = "orders.queue", exchange = "orders.exchange"),
                     ),
                 ),
@@ -75,13 +75,13 @@ class AmqpQueueConfigurationTest {
             props(
                 sender = mapOf(
                     "orders" to SenderProperties(
-                        endpoint = "/api/orders",
+                        rest = SenderRestProperties(path = "/api/orders"),
                         queue = QueueEndpointProperties(name = "shared.queue"),
                     ),
                 ),
                 receiver = mapOf(
                     "orders-back" to ReceiverProperties(
-                        endpoint = "https://downstream.example.com/notify",
+                        rest = ReceiverRestProperties(url = "https://downstream.example.com/notify"),
                         queue = QueueEndpointProperties(name = "shared.queue"),
                     ),
                 ),
@@ -97,7 +97,7 @@ class AmqpQueueConfigurationTest {
             props(
                 sender = mapOf(
                     "orders" to SenderProperties(
-                        endpoint = "/api/orders",
+                        rest = SenderRestProperties(path = "/api/orders"),
                         queue = QueueEndpointProperties(name = "orders.queue"),
                     ),
                 ),

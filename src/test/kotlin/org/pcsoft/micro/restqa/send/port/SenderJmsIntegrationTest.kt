@@ -4,6 +4,7 @@ import jakarta.jms.BytesMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.jms.core.JmsTemplate
@@ -20,11 +21,12 @@ import org.testcontainers.junit.jupiter.Testcontainers
  * (Testcontainers), and the test asserts the message body and all forwarded HTTP headers
  * — including the custom one — arrived intact.
  *
- * Note JMS property-name sanitization in [org.pcsoft.micro.restqa.send.controller.JmsQueueClient]:
+ * Note JMS property-name sanitization in [org.pcsoft.micro.restqa.send.port.JmsQueueClient]:
  * non-alphanumeric characters become '_', so `Content-Type` arrives as `Content_Type`
  * while `custom` is unaffected.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
 @Testcontainers
 class SenderJmsIntegrationTest {
 
@@ -49,8 +51,8 @@ class SenderJmsIntegrationTest {
             // Avoid blocking forever if no message arrives.
             registry.add("spring.jms.template.receive-timeout") { "10s" }
 
-            registry.add("restqa.queue.type") { "jms" }
-            registry.add("restqa.sender.test.endpoint") { ENDPOINT }
+            registry.add("restqa.type") { "jms" }
+            registry.add("restqa.sender.test.rest.path") { ENDPOINT }
             registry.add("restqa.sender.test.queue.name") { QUEUE }
         }
     }
@@ -69,7 +71,7 @@ class SenderJmsIntegrationTest {
             .header("custom", "demo")
             .bodyValue("Hello World".toByteArray())
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isAccepted
 
         val message = jmsTemplate.receive(QUEUE)
         assertThat(message).withFailMessage("expected a message on destination '%s'", QUEUE).isNotNull
@@ -80,7 +82,9 @@ class SenderJmsIntegrationTest {
 
         // Custom header survives unchanged; standard headers arrive with sanitized names.
         assertThat(message.getStringProperty("custom")).isEqualTo("demo")
+        // Content-Type is propagated (sanitized to Content_Type for JMS).
         assertThat(message.getStringProperty("Content_Type")).contains(MediaType.TEXT_PLAIN_VALUE)
-        assertThat(message.getStringProperty("content_length")).isNotNull()
+        // Transport headers (host, content-length) are filtered out.
+        assertThat(message.getStringProperty("host")).isNull()
     }
 }
