@@ -57,6 +57,12 @@ class SenderEndpointController(
         private val PROBLEM_JSON = MediaType.valueOf("application/problem+json")
     }
 
+    /**
+     * Processes an incoming HTTP request by extracting its headers and body, enforcing
+     * payload size limits, and forwarding the message to the configured queue. In
+     * asynchronous mode returns `202 Accepted`; in synchronous mode waits for and
+     * relays the receiver's response. Returns RFC 9457 Problem Details on failure.
+     */
     fun handle(request: ServerRequest): Mono<ServerResponse> {
         log.info("Request received on '{}'", properties.rest.path)
         // Flatten multi-valued HTTP headers into single comma-joined values.

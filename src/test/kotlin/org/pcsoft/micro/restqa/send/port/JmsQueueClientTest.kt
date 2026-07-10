@@ -15,6 +15,11 @@ import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.springframework.jms.core.JmsTemplate
 import org.springframework.jms.core.MessagePostProcessor
 
+/**
+ * Unit tests for [JmsQueueClient], verifying that the client correctly sends payloads
+ * to JMS destinations using only the queue name (ignoring AMQP-specific fields) and
+ * that HTTP headers are sanitized to valid JMS property names before being set on the message.
+ */
 @ExtendWith(MockitoExtension::class)
 class JmsQueueClientTest {
 
@@ -24,6 +29,11 @@ class JmsQueueClientTest {
     @InjectMocks
     private lateinit var client: JmsQueueClient
 
+    /**
+     * Verifies that the JMS queue client uses only the `name` property from the endpoint
+     * configuration as the JMS destination, ignoring AMQP-specific fields like `exchange`
+     * and `routingKey` which are irrelevant in the JMS context.
+     */
     @Test
     fun `send forwards payload to the queue name as destination`() {
         val payload = "hello".toByteArray()
@@ -39,6 +49,11 @@ class JmsQueueClientTest {
         verify(jmsTemplate).convertAndSend(eq("orders.queue"), eq(payload), any<MessagePostProcessor>())
     }
 
+    /**
+     * Verifies that HTTP headers are applied as JMS string properties with sanitized names.
+     * JMS property names do not allow hyphens, so characters like '-' in header names
+     * (e.g., `Content-Type`) are mapped to underscores (`Content_Type`) before being set.
+     */
     @Test
     fun `send applies headers as JMS string properties with sanitized names`() {
         val payload = "hello".toByteArray()

@@ -68,6 +68,13 @@ class ReceiverAmqpIntegrationTest {
     @Autowired
     private lateinit var rabbitTemplate: RabbitTemplate
 
+    /**
+     * Verifies the full AMQP receive pipeline end-to-end: publishes a message with a body
+     * ("Hello World"), a contentType property, and a custom header onto a RabbitMQ queue.
+     * Asserts that the gateway consumes the message and forwards it via HTTP POST to
+     * WireMock with the correct body, the custom header propagated, and Content-Type
+     * mapped from the AMQP message properties back to an HTTP header.
+     */
     @Test
     fun `consumes an AMQP message and forwards body and headers (incl custom) over HTTP`() {
         rabbitTemplate.convertAndSend(QUEUE, "Hello World".toByteArray()) { message ->

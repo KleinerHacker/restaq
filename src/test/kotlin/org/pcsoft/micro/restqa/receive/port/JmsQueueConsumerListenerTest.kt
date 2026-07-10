@@ -110,6 +110,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── Retry Success ────────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the JMS listener commits the session on successful forward
+     * of a message on its first delivery attempt (deliveryCount=1), confirming
+     * that the message is removed from the queue after successful processing.
+     */
     @Test
     fun `listener commits on successful forward (first delivery)`() {
         val (_, listener) = buildListener(receiver())
@@ -119,6 +124,11 @@ class JmsQueueConsumerListenerTest {
         listener.onMessage(message)
     }
 
+    /**
+     * Verifies that the JMS listener commits the session after a successful forward
+     * even when the message has been redelivered multiple times (deliveryCount=3,
+     * meaning retryCount=2). Confirms that retry state does not prevent a successful commit.
+     */
     @Test
     fun `listener commits on successful forward after retries (deliveryCount=3)`() {
         val (_, listener) = buildListener(receiver())
@@ -133,6 +143,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── Retry Failure → Exception → Rollback ────────────────────────────────────
 
+    /**
+     * Verifies that the listener throws a RuntimeException when the downstream HTTP
+     * forward fails (500) and retries remain (first delivery, retryCount=0). The thrown
+     * exception triggers a session rollback so the broker redelivers the message.
+     */
     @Test
     fun `listener throws on forward failure when retries remain causing rollback`() {
         val (_, listener) = buildListener(
@@ -147,6 +162,12 @@ class JmsQueueConsumerListenerTest {
         assertTrue(ex.message!!.contains("Delivery failed after attempt 0"))
     }
 
+    /**
+     * Verifies that the listener throws a RuntimeException when the downstream returns
+     * 503 Service Unavailable at an intermediate retry attempt (deliveryCount=3, retryCount=2)
+     * while maxRetries=5. This ensures the backoff-and-redeliver mechanism keeps working
+     * until retries are exhausted.
+     */
     @Test
     fun `listener throws on forward failure at intermediate retry`() {
         val (_, listener) = buildListener(
@@ -162,6 +183,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── Retry Exhausted → DLQ ───────────────────────────────────────────────────
 
+    /**
+     * Verifies that the listener throws a RuntimeException when retries are exhausted
+     * (deliveryCount=4, retryCount=3 equals maxRetries=3). The broker will route the
+     * message to the dead-letter queue since no more retries are possible.
+     */
     @Test
     fun `listener throws on exhausted retries to let broker route to DLQ`() {
         val (_, listener) = buildListener(
@@ -175,6 +201,11 @@ class JmsQueueConsumerListenerTest {
         assertTrue(ex.message!!.contains("Delivery failed after attempt 3"))
     }
 
+    /**
+     * Verifies that the listener throws a RuntimeException when the retry count far
+     * exceeds the configured maximum (deliveryCount=10, retryCount=9 vs maxRetries=2).
+     * This confirms the DLQ routing path even when the broker over-redelivers.
+     */
     @Test
     fun `listener throws when retry count exceeds max retries`() {
         val (_, listener) = buildListener(
@@ -189,6 +220,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── X-Retry-Count Header ─────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the forward HTTP request includes the correct X-Retry-Count header
+     * derived from JMSXDeliveryCount. With deliveryCount=4, the expected retryCount is 3
+     * (deliveryCount - 1), which must appear as the X-Retry-Count header value.
+     */
     @Test
     fun `forward receives correct retryCount from JMSXDeliveryCount`() {
         var capturedRetryCount: String? = null
@@ -205,6 +241,10 @@ class JmsQueueConsumerListenerTest {
         assertEquals("3", capturedRetryCount)
     }
 
+    /**
+     * Verifies that the X-Retry-Count header is "0" on the first delivery (deliveryCount=1),
+     * confirming that the initial delivery attempt is correctly reported as zero retries.
+     */
     @Test
     fun `forward receives retryCount 0 on first delivery`() {
         var capturedRetryCount: String? = null
@@ -220,6 +260,11 @@ class JmsQueueConsumerListenerTest {
         assertEquals("0", capturedRetryCount)
     }
 
+    /**
+     * Verifies that when JMSXDeliveryCount is not set (throws NumberFormatException),
+     * the listener gracefully falls back to deliveryCount=1, resulting in retryCount=0.
+     * This ensures the listener does not crash when the broker omits the property.
+     */
     @Test
     fun `getRetryCount handles missing JMSXDeliveryCount gracefully`() {
         var capturedRetryCount: String? = null
@@ -248,6 +293,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── TTL / isExpired ──────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that an expired message (timestamp 1 minute ago with a 5-second TTL) is
+     * acknowledged without being forwarded to the downstream HTTP endpoint. This ensures
+     * stale messages are silently discarded rather than delivered late.
+     */
     @Test
     fun `listener acknowledges expired message without forwarding`() {
         val receiverProps = receiver(ttl = Duration.ofSeconds(5))
@@ -271,6 +321,11 @@ class JmsQueueConsumerListenerTest {
         assertFalse(forwardCalled, "Forward should not be called for expired messages")
     }
 
+    /**
+     * Verifies that a message within its TTL window (timestamp 1 second ago, TTL 5 minutes)
+     * is processed normally and forwarded to the downstream. Confirms that valid messages
+     * are not incorrectly discarded by the expiry check.
+     */
     @Test
     fun `listener processes non-expired message normally`() {
         val receiverProps = receiver(ttl = Duration.ofMinutes(5))
@@ -287,6 +342,11 @@ class JmsQueueConsumerListenerTest {
         listener.onMessage(message)
     }
 
+    /**
+     * Verifies that a message with timestamp=0 (unset) is processed normally even when
+     * TTL is configured. Since the age cannot be determined, the message should not be
+     * treated as expired.
+     */
     @Test
     fun `listener processes message with timestamp 0 when TTL is configured`() {
         val receiverProps = receiver(ttl = Duration.ofSeconds(5))
@@ -300,6 +360,10 @@ class JmsQueueConsumerListenerTest {
 
     // ─── payloadOf ────────────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that payloadOf correctly extracts the raw byte content from a BytesMessage.
+     * The extracted bytes must match the original binary payload placed in the message.
+     */
     @Test
     fun `payloadOf extracts bytes from BytesMessage`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -311,6 +375,11 @@ class JmsQueueConsumerListenerTest {
         assertEquals("binary-data", String(payload))
     }
 
+    /**
+     * Verifies that payloadOf correctly extracts text content from a TextMessage and
+     * converts it to a byte array. The resulting bytes must match the UTF-8 encoding
+     * of the original text.
+     */
     @Test
     fun `payloadOf extracts text from TextMessage`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -322,6 +391,10 @@ class JmsQueueConsumerListenerTest {
         assertEquals("text-data", String(payload))
     }
 
+    /**
+     * Verifies that payloadOf returns an empty byte array when a TextMessage has null text.
+     * This guards against NullPointerException for messages with empty bodies.
+     */
     @Test
     fun `payloadOf returns empty for null text in TextMessage`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -335,6 +408,11 @@ class JmsQueueConsumerListenerTest {
         assertEquals(0, payload.size)
     }
 
+    /**
+     * Verifies that payloadOf returns an empty byte array for an unrecognized JMS message
+     * type (neither BytesMessage nor TextMessage). This ensures graceful degradation
+     * rather than a crash for unsupported message formats.
+     */
     @Test
     fun `payloadOf returns empty for unknown message type`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -348,6 +426,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── headersOf ────────────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that headersOf extracts all JMS message properties as a string map suitable
+     * for HTTP header propagation. Each property name and its string value should appear
+     * in the returned map.
+     */
     @Test
     fun `headersOf extracts JMS properties as headers`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -365,6 +448,11 @@ class JmsQueueConsumerListenerTest {
         assertEquals("application/json", headers["Content_Type"])
     }
 
+    /**
+     * Verifies that headersOf omits JMS properties with null values from the resulting
+     * header map. Only properties with non-null values should be included to avoid
+     * sending empty headers to the downstream.
+     */
     @Test
     fun `headersOf skips null property values`() {
         val props = RestqaProperties(receiver = mapOf("test" to receiver()))
@@ -384,6 +472,11 @@ class JmsQueueConsumerListenerTest {
 
     // ─── Connection error ─────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the listener throws a RuntimeException when the HTTP connection to
+     * the downstream fails entirely (e.g., "Connection refused"). This triggers a session
+     * rollback so the broker redelivers the message on the next attempt.
+     */
     @Test
     fun `listener throws on connection error to trigger rollback`() {
         val exchangeFn = ExchangeFunction {

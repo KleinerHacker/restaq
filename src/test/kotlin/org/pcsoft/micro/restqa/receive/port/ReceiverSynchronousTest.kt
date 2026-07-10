@@ -35,6 +35,12 @@ class ReceiverSynchronousTest {
 
     // ─── Sync Receiver (no URL) ───────────────────────────────────────────────────
 
+    /**
+     * Verifies that a synchronous receiver (no downstream URL configured) resolves the
+     * pending CompletableFuture in the registry with the message payload and headers when
+     * a valid correlation ID is present. The sender waiting on this future receives the
+     * response with status 200, the original body, and Content-Type header.
+     */
     @Test
     fun `sync receiver resolves future with message payload when correlation ID present`() {
         val registry = SynchronousResponseRegistry()
@@ -57,6 +63,11 @@ class ReceiverSynchronousTest {
         assertEquals("application/json", response.headers["Content-Type"])
     }
 
+    /**
+     * Verifies that a synchronous receiver returns Either.Left when no correlation ID
+     * header is present in the message. Without a correlation ID, the receiver cannot
+     * match the message to a pending request, so it must signal failure.
+     */
     @Test
     fun `sync receiver returns Left when no correlation ID present`() {
         val registry = SynchronousResponseRegistry()
@@ -68,6 +79,11 @@ class ReceiverSynchronousTest {
         assertIs<Either.Left<Exception>>(result)
     }
 
+    /**
+     * Verifies that a synchronous receiver returns Either.Left when the correlation ID
+     * does not match any pending request (simulating the sender having already timed out
+     * and removed its entry from the registry). The message is effectively orphaned.
+     */
     @Test
     fun `sync receiver returns Left when sender already timed out`() {
         val registry = SynchronousResponseRegistry()
@@ -81,6 +97,11 @@ class ReceiverSynchronousTest {
         assertIs<Either.Left<Exception>>(result)
     }
 
+    /**
+     * Verifies that a synchronous receiver (no URL configured) does not make any outbound
+     * HTTP call. The message payload is delivered directly to the registry future without
+     * contacting a downstream service, confirming the in-memory response path.
+     */
     @Test
     fun `sync receiver does not make any HTTP call`() {
         val registry = SynchronousResponseRegistry()
@@ -102,6 +123,12 @@ class ReceiverSynchronousTest {
 
     // ─── Async Receiver with Correlation ID ───────────────────────────────────────
 
+    /**
+     * Verifies that an async receiver (has downstream URL) with a correlation ID header
+     * forwards the message to the downstream AND completes the synchronous registry with
+     * the downstream's response. This enables the sender to receive the actual downstream
+     * response (status, headers, body) through the registry future.
+     */
     @Test
     fun `async receiver with correlation ID completes registry with downstream response`() {
         val registry = SynchronousResponseRegistry()
@@ -128,6 +155,12 @@ class ReceiverSynchronousTest {
         assertEquals("response-body", String(response.body))
     }
 
+    /**
+     * Verifies that an async receiver without a correlation ID header in the message does
+     * not interact with the synchronous response registry. Previously registered pending
+     * requests remain pending, confirming that only messages with correlation IDs trigger
+     * registry completion.
+     */
     @Test
     fun `async receiver without correlation ID does not touch registry`() {
         val registry = SynchronousResponseRegistry()
@@ -146,6 +179,11 @@ class ReceiverSynchronousTest {
 
     // ─── Header Behaviour ─────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that an async receiver does NOT inject the X-Retry-Count header into the
+     * outgoing HTTP request when a correlation ID is present (synchronous mode). Retry
+     * metadata is irrelevant for synchronous request-reply patterns and must be suppressed.
+     */
     @Test
     fun `async receiver does NOT inject X-Retry-Count when correlation ID is present`() {
         val registry = SynchronousResponseRegistry()
@@ -167,6 +205,11 @@ class ReceiverSynchronousTest {
         assertNull(capturedHeaders.getFirst("X-Retry-Count"))
     }
 
+    /**
+     * Verifies that an async receiver without a correlation ID (pure async mode) correctly
+     * injects the X-Retry-Count header with the provided retryCount value. This allows
+     * the downstream to know how many delivery attempts have been made.
+     */
     @Test
     fun `async receiver injects X-Retry-Count when no correlation ID`() {
         var capturedHeaders: org.springframework.http.HttpHeaders? = null
@@ -183,6 +226,12 @@ class ReceiverSynchronousTest {
         assertEquals("2", capturedHeaders.getFirst("X-Retry-Count"))
     }
 
+    /**
+     * Verifies that the async receiver strips the internal correlation ID header before
+     * forwarding to the downstream. The correlation ID is an internal routing mechanism
+     * and must not leak to external services. Other headers (e.g., X-Custom) must still
+     * be propagated normally.
+     */
     @Test
     fun `async receiver does not forward correlation ID to downstream`() {
         val registry = SynchronousResponseRegistry()
@@ -207,6 +256,12 @@ class ReceiverSynchronousTest {
         assertEquals("value", capturedHeaders.getFirst("X-Custom"))
     }
 
+    /**
+     * Verifies that the async receiver works correctly when no SynchronousResponseRegistry
+     * is provided (null). This covers the pure async deployment scenario where synchronous
+     * request-reply is not configured, and the controller should simply forward and return
+     * Right on success.
+     */
     @Test
     fun `async receiver works without registry (null)`() {
         val exchange = ExchangeFunction {

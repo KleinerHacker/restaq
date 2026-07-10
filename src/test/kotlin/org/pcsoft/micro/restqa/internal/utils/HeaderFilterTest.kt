@@ -7,8 +7,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * Verifies the header filtering logic in [HeaderFilter], which strips hop-by-hop,
+ * proxy, forwarding, and TLS/transport-related headers before propagating HTTP
+ * headers across the messaging boundary. Ensures that application-level headers
+ * (Content-Type, Authorization, custom X- headers) pass through while infrastructure
+ * headers are excluded regardless of casing.
+ */
 class HeaderFilterTest {
 
+    /**
+     * Verifies that headers belonging to the exclusion list (hop-by-hop transport
+     * headers, proxy headers, forwarding headers, and TLS client certificate headers)
+     * are correctly identified as excluded. Tests case-insensitive matching to ensure
+     * headers are filtered regardless of how upstream systems capitalize them.
+     */
     @ParameterizedTest
     @ValueSource(
         strings = [
@@ -37,6 +50,12 @@ class HeaderFilterTest {
         assertTrue(HeaderFilter.isExcluded(header), "Expected '$header' to be excluded")
     }
 
+    /**
+     * Verifies that application-level headers that are NOT on the exclusion list
+     * pass through the filter. These include content negotiation headers, authentication
+     * tokens, tracing identifiers, and custom application headers that must be
+     * preserved when forwarding messages across the queue boundary.
+     */
     @ParameterizedTest
     @ValueSource(
         strings = [
@@ -53,6 +72,12 @@ class HeaderFilterTest {
         assertFalse(HeaderFilter.isExcluded(header), "Expected '$header' to pass through")
     }
 
+    /**
+     * Verifies the [HeaderFilter.filter] function correctly removes excluded headers
+     * from an input map while retaining all allowed headers. The resulting map must
+     * contain only application-relevant headers suitable for propagation to the
+     * downstream target or queue message properties.
+     */
     @Test
     fun `filter returns only allowed headers`() {
         val input = mapOf(
@@ -77,6 +102,11 @@ class HeaderFilterTest {
         )
     }
 
+    /**
+     * Verifies that filtering an empty header map returns an empty map without
+     * errors. This edge case ensures the filter handles the absence of headers
+     * gracefully, as can happen with minimal HTTP requests.
+     */
     @Test
     fun `filter with empty map returns empty map`() {
         assertEquals(emptyMap(), HeaderFilter.filter(emptyMap()))

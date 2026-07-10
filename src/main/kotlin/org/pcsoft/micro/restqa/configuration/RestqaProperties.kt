@@ -37,6 +37,11 @@ data class RestqaProperties(
  * Queue endpoint settings for a single flow. [name] is the queue/destination name.
  * [exchange] and [routingKey] are AMQP-specific and ignored for JMS, where only
  * [name] (the destination) is used.
+ *
+ * @property name The queue or destination name used by both AMQP and JMS.
+ * @property exchange The AMQP exchange to publish to (optional, AMQP only). When `null`, the default exchange is used.
+ * @property routingKey The AMQP routing key (optional, AMQP only). Defaults to [name] when not specified.
+ * @property properties Arbitrary key-value pairs forwarded as broker-specific message properties.
  */
 data class QueueEndpointProperties(
     val name: String,
@@ -52,6 +57,11 @@ data class QueueEndpointProperties(
  *
  * [timeout] defines the maximum time the sender will wait for a response — regardless
  * of whether the flow is synchronous or asynchronous. Default is 30 seconds.
+ *
+ * @property rest REST endpoint configuration (path) on which this sender accepts requests.
+ * @property queue Queue endpoint to which accepted requests are forwarded.
+ * @property synchronous Optional synchronous mode configuration referencing a receiver for request/reply.
+ * @property timeout Maximum duration to wait for queue acknowledgement or synchronous response. Defaults to 30 s.
  */
 data class SenderProperties(
     val rest: SenderRestProperties,
@@ -62,6 +72,8 @@ data class SenderProperties(
 
 /**
  * REST configuration for a sender endpoint.
+ *
+ * @property path The HTTP path (e.g. `/api/orders`) on which the sender endpoint is exposed.
  */
 data class SenderRestProperties(
     val path: String,
@@ -86,6 +98,12 @@ data class SenderSynchronousProperties(
  *
  * [timeout] defines the maximum time the receiver will wait for the downstream
  * target to respond (when [rest.url] is set). Default is 30 seconds.
+ *
+ * @property rest REST callback configuration. When [ReceiverRestProperties.url] is set, consumed messages are forwarded there.
+ * @property queue Queue endpoint from which messages are consumed.
+ * @property retry Retry configuration (max attempts and backoff) for failed deliveries (async only).
+ * @property timeToLive Optional maximum message age. Messages older than this are discarded on receipt.
+ * @property timeout Maximum duration to wait for the downstream target to respond. Defaults to 30 s.
  */
 data class ReceiverProperties(
     val rest: ReceiverRestProperties = ReceiverRestProperties(),
@@ -100,6 +118,8 @@ data class ReceiverProperties(
  *
  * [url] is the target HTTP URL for callback delivery. It is `null` when the receiver
  * acts as a synchronous response channel (referenced by a sender's `synchronous.receiver-ref`).
+ *
+ * @property url The target HTTP URL for callback delivery, or `null` for synchronous-only receivers.
  */
 data class ReceiverRestProperties(
     val url: String? = null,
@@ -108,6 +128,9 @@ data class ReceiverRestProperties(
 /**
  * Retry configuration for receiver flows. Only applies to asynchronous receivers
  * (those with a configured [ReceiverRestProperties.url]).
+ *
+ * @property maxRetries Maximum number of delivery attempts before routing to the dead-letter queue. Defaults to 3.
+ * @property backoffPeriod Delay between consecutive retry attempts. Defaults to 5 seconds.
  */
 data class RetryProperties(
     val maxRetries: Int = 3,

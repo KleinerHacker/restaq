@@ -56,47 +56,19 @@ Returned when a synchronous sender's timeout expires before the receiver deliver
 
 ## Receiver Error Behaviour
 
-The receiver does not expose HTTP endpoints itself — it consumes messages and delivers them via HTTP POST. Errors are handled internally:
+The receiver does not expose HTTP endpoints itself — it consumes messages and delivers them via HTTP POST. Errors are handled internally through retry and dead-letter routing.
 
-### Retry Flow (Asynchronous Messages)
+For the complete retry flow, backoff configuration, and DLQ behaviour, see [Retry & Dead-Letter Queue](features/retry-and-dlq.md).
 
-1. Message consumed from queue
-2. HTTP POST to target URL
-3. On failure (non-2xx or connection error):
-    - Increment retry count
-    - Wait for `backoff-period`
-    - Redeliver the message
-4. After `max-retries` exhausted:
-    - Log ERROR with stacktrace
-    - Reject the message → broker routes to Dead Letter Queue
+For message expiry behaviour, see [Message Time-to-Live](features/time-to-live.md).
 
-### Synchronous Message Failures
+### Key Points
 
-Synchronous messages (identified by the presence of `X-Restqa-Correlation-Id`) do **not** use retry logic. On delivery failure:
-
-1. Message consumed from queue
-2. HTTP POST to target
-3. On failure (non-2xx or connection error):
-    - Log ERROR with stacktrace
-    - Reject the message → broker routes directly to Dead Letter Queue
-
-No `X-Retry-Count` header is injected for synchronous messages.
-
-### X-Retry-Count Header
-
-Every outgoing HTTP request from the receiver for **asynchronous** messages includes the `X-Retry-Count` header (zero-based integer). This allows downstream services to detect redeliveries:
-
-```
-X-Retry-Count: 0   (first attempt)
-X-Retry-Count: 1   (first retry)
-X-Retry-Count: 2   (second retry)
-```
-
-This header is **not** present on synchronous message deliveries.
-
-### Time-to-Live
-
-If `time-to-live` is configured and a message's age exceeds it, the message is discarded without delivery. This prevents stale data from reaching downstream systems.
+- Failed deliveries are retried with configurable backoff (see [configuration](features/retry-and-dlq.md#configuration))
+- After exhausting retries, messages are rejected to the broker's native DLQ
+- Synchronous messages skip retry and go directly to DLQ on failure
+- The `X-Retry-Count` header (zero-based) is injected on every async delivery
+- Messages exceeding `time-to-live` are silently discarded
 
 ---
 

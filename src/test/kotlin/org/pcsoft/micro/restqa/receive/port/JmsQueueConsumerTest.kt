@@ -12,6 +12,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * Unit tests for [JmsQueueConsumer] container construction and lifecycle.
+ * Verifies that listener containers are created correctly based on the configured
+ * receivers, use queue domain (not topics), enable transacted sessions for retry
+ * support, and that the stop lifecycle method behaves safely.
+ */
 class JmsQueueConsumerTest {
 
     private fun receiver(name: String) = ReceiverProperties(
@@ -19,6 +25,12 @@ class JmsQueueConsumerTest {
         queue = QueueEndpointProperties(name = name),
     )
 
+    /**
+     * Verifies that buildContainers creates one JMS listener container per configured
+     * receiver entry. Each container must target the correct queue name, use queue domain
+     * (not pub/sub topics), and have transacted sessions enabled to support retry via
+     * session rollback.
+     */
     @Test
     fun `builds one listener container per configured receiver in queue domain`() {
         val props = RestqaProperties(
@@ -39,6 +51,10 @@ class JmsQueueConsumerTest {
         assertTrue(containers.all { it.isSessionTransacted }, "must use transacted sessions for retry")
     }
 
+    /**
+     * Verifies that when no receivers are configured, buildContainers returns an empty
+     * list. This confirms safe behavior when the application is deployed as sender-only.
+     */
     @Test
     fun `no receivers yields no containers`() {
         val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), RestqaProperties(), WebClient.builder())
@@ -47,6 +63,11 @@ class JmsQueueConsumerTest {
         assertEquals(0, containers.size)
     }
 
+    /**
+     * Verifies that the stop() lifecycle method can be called without error on a fresh
+     * consumer instance (containers built but never started). This confirms graceful
+     * shutdown behavior even when no real broker connection exists.
+     */
     @Test
     fun `stop clears containers`() {
         val props = RestqaProperties(

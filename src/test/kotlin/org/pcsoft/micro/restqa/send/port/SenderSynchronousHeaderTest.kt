@@ -45,6 +45,12 @@ class SenderSynchronousHeaderTest {
         return ServerRequest.create(exchange, HandlerStrategies.withDefaults().messageReaders())
     }
 
+    /**
+     * Verifies that when the downstream service returns HTTP 415 Unsupported Media Type
+     * (because the client sent an incompatible Content-Type like XML when only JSON is accepted),
+     * the synchronous sender transparently forwards the 415 status to the original client
+     * without transforming or masking the error.
+     */
     @Test
     fun `downstream returns 415 Unsupported Media Type when Content-Type is incompatible`() {
         val queueClient = mock<MessageQueueClient>()
@@ -74,6 +80,11 @@ class SenderSynchronousHeaderTest {
         assertEquals(415, response.statusCode().value())
     }
 
+    /**
+     * Verifies that when the downstream service returns HTTP 406 Not Acceptable
+     * (because it cannot produce a response matching the client's `Accept` header),
+     * the synchronous sender transparently forwards the 406 status to the original caller.
+     */
     @Test
     fun `downstream returns 406 Not Acceptable when Accept header cannot be satisfied`() {
         val queueClient = mock<MessageQueueClient>()
@@ -103,6 +114,12 @@ class SenderSynchronousHeaderTest {
         assertEquals(406, response.statusCode().value())
     }
 
+    /**
+     * Verifies that RESTAQ does not enforce content negotiation between the client's `Accept`
+     * header and the downstream's response `Content-Type`. When the downstream responds with
+     * XML despite the client requesting JSON, the gateway transparently forwards the 200
+     * response as-is — RESTAQ acts as a pass-through, not a content negotiation layer.
+     */
     @Test
     fun `response Content-Type mismatch with client Accept is forwarded transparently`() {
         val queueClient = mock<MessageQueueClient>()
@@ -134,6 +151,11 @@ class SenderSynchronousHeaderTest {
         assertEquals(HttpStatus.OK, response.statusCode())
     }
 
+    /**
+     * Verifies that a downstream HTTP 500 Internal Server Error is forwarded to the original
+     * client with the error body intact, confirming that the synchronous sender does not
+     * swallow or replace server-side error responses from downstream services.
+     */
     @Test
     fun `downstream 500 error is forwarded with error body intact`() {
         val queueClient = mock<MessageQueueClient>()
@@ -159,6 +181,11 @@ class SenderSynchronousHeaderTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode())
     }
 
+    /**
+     * Verifies that the `Content-Type` header from the client's request is propagated
+     * through the queue to the downstream service, ensuring the receiver can correctly
+     * interpret the payload format (e.g., JSON, XML) as intended by the original caller.
+     */
     @Test
     fun `Content-Type from client is propagated to queue and reaches downstream`() {
         val queueClient = mock<MessageQueueClient>()
@@ -178,6 +205,11 @@ class SenderSynchronousHeaderTest {
         ).block()
     }
 
+    /**
+     * Verifies that the `Accept` header from the client's request is propagated through
+     * the queue to the downstream service, allowing the downstream to perform content
+     * negotiation based on the original client's media type preferences.
+     */
     @Test
     fun `Accept header from client is propagated to queue for downstream evaluation`() {
         val queueClient = mock<MessageQueueClient>()

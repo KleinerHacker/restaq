@@ -42,6 +42,11 @@ class SenderEndpointControllerErrorTest {
 
     // ─── Queue System Unreachable → 502 ──────────────────────────────────────────
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway when the AMQP broker is
+     * unreachable, indicated by an [AmqpConnectException] wrapping a connection refused error.
+     * This simulates the broker being down or the network being inaccessible.
+     */
     @Test
     fun `handle returns 502 when AMQP broker is unreachable (AmqpConnectException)`() {
         val queueClient = mock<MessageQueueClient>()
@@ -56,6 +61,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway when the AMQP broker
+     * experiences an I/O failure (e.g., socket closed unexpectedly), indicated by
+     * an [AmqpIOException]. This covers network interruptions during message send.
+     */
     @Test
     fun `handle returns 502 when AMQP broker has IO error (AmqpIOException)`() {
         val queueClient = mock<MessageQueueClient>()
@@ -70,6 +80,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway when the JMS broker is
+     * unreachable, indicated by a [JmsException]. This ensures JMS connectivity failures
+     * are treated identically to AMQP failures from the client's perspective.
+     */
     @Test
     fun `handle returns 502 when JMS broker is unreachable`() {
         val queueClient = mock<MessageQueueClient>()
@@ -84,6 +99,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway with a problem detail response
+     * when a generic runtime exception occurs during message send — regardless of the
+     * specific exception type — confirming the catch-all error handling behavior.
+     */
     @Test
     fun `handle returns 502 with problem detail mentioning queue name when broker is down`() {
         val queueClient = mock<MessageQueueClient>()
@@ -101,6 +121,11 @@ class SenderEndpointControllerErrorTest {
 
     // ─── Queue Does Not Exist → 502 ──────────────────────────────────────────────
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway when the AMQP queue does not
+     * exist on the broker, simulated by a channel error with reply-code 404. This covers
+     * the scenario where the queue or exchange has not been declared on the broker.
+     */
     @Test
     fun `handle returns 502 when AMQP queue does not exist (channel error)`() {
         val queueClient = mock<MessageQueueClient>()
@@ -123,6 +148,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway when the JMS destination does
+     * not exist on the ActiveMQ Artemis broker, simulated by an [InvalidDestinationException].
+     * This ensures missing JMS destinations are surfaced as gateway errors to the client.
+     */
     @Test
     fun `handle returns 502 when JMS destination does not exist`() {
         val queueClient = mock<MessageQueueClient>()
@@ -147,6 +177,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that the handler returns HTTP 502 Bad Gateway and that the error message
+     * from the underlying exception is captured in the problem detail response, enabling
+     * operators to diagnose the root cause from the HTTP response alone.
+     */
     @Test
     fun `handle returns 502 with problem detail containing error message`() {
         val queueClient = mock<MessageQueueClient>()
@@ -166,6 +201,11 @@ class SenderEndpointControllerErrorTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that any unexpected exception type (not AMQP- or JMS-specific) thrown during
+     * message send still results in HTTP 502 Bad Gateway, confirming the handler's catch-all
+     * error mapping does not allow unhandled exceptions to propagate as 500 Internal Server Error.
+     */
     @Test
     fun `handle returns 502 for any unexpected exception type during send`() {
         val queueClient = mock<MessageQueueClient>()

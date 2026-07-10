@@ -106,6 +106,12 @@ class MultiEndpointJmsIntegrationTest {
 
     // ─── Multiple Senders ─────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that a POST to the orders sender endpoint results in a JMS BytesMessage
+     * being placed on the orders destination with the correct body content. Confirms
+     * the sender returns HTTP 202 Accepted and the JMS message payload matches the
+     * original JSON request body exactly.
+     */
     @Test
     fun `orders sender routes to orders destination`() {
         client.post()
@@ -122,6 +128,12 @@ class MultiEndpointJmsIntegrationTest {
         assertThat(String(bytes, Charsets.UTF_8)).isEqualTo("""{"orderId": "ORD-001"}""")
     }
 
+    /**
+     * Verifies that a POST to the invoices sender endpoint results in a JMS BytesMessage
+     * being placed on the invoices destination with the correct body content. Confirms
+     * that the second sender endpoint operates independently of the first and routes
+     * to its own dedicated JMS destination.
+     */
     @Test
     fun `invoices sender routes to invoices destination`() {
         client.post()
@@ -138,6 +150,13 @@ class MultiEndpointJmsIntegrationTest {
         assertThat(String(bytes, Charsets.UTF_8)).isEqualTo("""{"invoiceId": "INV-042"}""")
     }
 
+    /**
+     * Verifies that messages sent through one sender endpoint do not appear on
+     * another sender's JMS destination. A message posted to the orders endpoint
+     * must only be present on the orders destination, and the invoices destination
+     * must remain empty. This confirms proper routing isolation between configured
+     * sender flows in JMS mode.
+     */
     @Test
     fun `senders do not cross-contaminate destinations`() {
         client.post()
@@ -163,6 +182,12 @@ class MultiEndpointJmsIntegrationTest {
 
     // ─── Multiple Receivers ───────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the notifications receiver consumes a message from the
+     * notifications JMS destination and delivers it via HTTP POST to the configured
+     * downstream notifications endpoint. Confirms both the message body and custom
+     * JMS string properties are propagated as HTTP headers to the target URL.
+     */
     @Test
     fun `notifications receiver delivers to notifications endpoint`() {
         jmsTemplate.convertAndSend(NOTIFICATIONS_QUEUE, "notification-event".toByteArray()) { msg ->
@@ -179,6 +204,12 @@ class MultiEndpointJmsIntegrationTest {
         }
     }
 
+    /**
+     * Verifies that the alerts receiver consumes a message from the alerts JMS
+     * destination and delivers it via HTTP POST to the configured downstream alerts
+     * endpoint. Confirms both the message body and custom JMS string properties
+     * (severity) are propagated correctly and independently of the notifications receiver.
+     */
     @Test
     fun `alerts receiver delivers to alerts endpoint`() {
         jmsTemplate.convertAndSend(ALERTS_QUEUE, "critical-alert".toByteArray()) { msg ->
@@ -195,6 +226,13 @@ class MultiEndpointJmsIntegrationTest {
         }
     }
 
+    /**
+     * Verifies that messages consumed by one receiver are not delivered to another
+     * receiver's target URL. A message placed on the notifications destination must
+     * only trigger a POST to the notifications endpoint; the alerts endpoint must
+     * receive zero requests. This confirms proper consumer isolation between
+     * receiver flows in JMS mode.
+     */
     @Test
     fun `receivers do not cross-contaminate targets`() {
         wireMock.resetRequests()
@@ -210,6 +248,13 @@ class MultiEndpointJmsIntegrationTest {
 
     // ─── Full Flow: Sender → Queue → Receiver ────────────────────────────────────
 
+    /**
+     * Verifies the complete sender-to-queue flow when multiple JMS endpoints are configured.
+     * A message sent via the orders sender endpoint (which has no receiver configured in
+     * this test) arrives on the orders JMS destination with the correct body payload and
+     * propagated custom headers. Confirms that HTTP header names are sanitized to valid
+     * JMS property names (hyphens replaced with underscores) during transit.
+     */
     @Test
     fun `full sender to receiver flow with multiple endpoints`() {
         wireMock.resetRequests()

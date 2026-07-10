@@ -22,6 +22,12 @@ class AmqpQueueClient(
         private val log = logger()
     }
 
+    /**
+     * Publishes [payload] to the AMQP broker using the given [endpoint] configuration.
+     * HTTP [headers] are attached as AMQP message properties. Routing uses
+     * [QueueEndpointProperties.exchange] (or the default exchange) and
+     * [QueueEndpointProperties.routingKey] (or the queue name as fallback).
+     */
     override fun send(endpoint: QueueEndpointProperties, payload: ByteArray, headers: Map<String, String>) {
         val exchange = endpoint.exchange ?: ""
         val routingKey = endpoint.routingKey ?: endpoint.name

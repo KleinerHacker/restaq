@@ -69,6 +69,12 @@ class ReceiverJmsIntegrationTest {
     @Autowired
     private lateinit var jmsTemplate: JmsTemplate
 
+    /**
+     * Verifies the full JMS receive pipeline end-to-end: sends a ByteArray message with a
+     * custom string property ("custom"="demo") to an ActiveMQ Artemis queue. Asserts that
+     * the gateway consumes the JMS message and forwards it via HTTP POST to WireMock with
+     * the correct body ("Hello World") and the custom property propagated as an HTTP header.
+     */
     @Test
     fun `consumes a JMS message and forwards body and headers (incl custom) over HTTP`() {
         // A ByteArray payload is converted to a BytesMessage (matching JmsQueueConsumer).

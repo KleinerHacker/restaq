@@ -38,6 +38,11 @@ class JmsQueueConfiguration(
         }
     }
 
+    /**
+     * Provides a [JmsTemplate] configured for point-to-point (queue) messaging.
+     * The template's `pubSubDomain` is set to `false` so that all destinations are
+     * treated as queues rather than topics.
+     */
     @Bean
     fun jmsTemplate(connectionFactory: ConnectionFactory): JmsTemplate =
         JmsTemplate(connectionFactory).apply {

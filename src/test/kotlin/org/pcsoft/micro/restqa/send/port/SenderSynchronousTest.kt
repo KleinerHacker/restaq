@@ -40,6 +40,11 @@ class SenderSynchronousTest {
         return ServerRequest.create(exchange, HandlerStrategies.withDefaults().messageReaders())
     }
 
+    /**
+     * Verifies that in synchronous mode the handler injects a unique correlation ID header
+     * into the message sent to the queue, registers for a response, and returns the
+     * downstream response (HTTP 200 with body) when the receiver completes the correlation.
+     */
     @Test
     fun `synchronous mode injects correlation ID header and returns response`() {
         val queueClient = mock<MessageQueueClient>()
@@ -60,6 +65,11 @@ class SenderSynchronousTest {
         verify(queueClient).send(any(), any(), any())
     }
 
+    /**
+     * Verifies that in synchronous mode, the downstream response's status code (e.g., 201 Created)
+     * and response headers (e.g., Content-Type) are faithfully returned to the original HTTP caller,
+     * confirming full response transparency across the queue boundary.
+     */
     @Test
     fun `synchronous mode returns downstream response status and body`() {
         val queueClient = mock<MessageQueueClient>()
@@ -85,6 +95,11 @@ class SenderSynchronousTest {
         assertEquals(HttpStatus.CREATED, response.statusCode())
     }
 
+    /**
+     * Verifies that when no response arrives within the configured timeout duration,
+     * the synchronous handler returns HTTP 504 Gateway Timeout to the caller, preventing
+     * indefinite blocking when the downstream service is unresponsive.
+     */
     @Test
     fun `synchronous mode returns 504 on timeout`() {
         val queueClient = mock<MessageQueueClient>()
@@ -99,6 +114,11 @@ class SenderSynchronousTest {
         assertEquals(HttpStatus.GATEWAY_TIMEOUT, response.statusCode())
     }
 
+    /**
+     * Verifies that when the queue send itself fails (e.g., broker is down), the synchronous
+     * handler returns HTTP 502 Bad Gateway and cleans up the pending correlation entry from
+     * the registry to avoid resource leaks.
+     */
     @Test
     fun `synchronous mode returns 502 when queue send fails`() {
         val queueClient = mock<MessageQueueClient>()
@@ -114,6 +134,11 @@ class SenderSynchronousTest {
         assertEquals(0, registry.pendingCount())
     }
 
+    /**
+     * Verifies that when no `synchronous` configuration is present (asynchronous mode),
+     * the handler returns HTTP 202 Accepted immediately after queuing the message,
+     * without waiting for any downstream response — regardless of the timeout setting.
+     */
     @Test
     fun `asynchronous mode returns 202 regardless of timeout`() {
         val asyncProperties = SenderProperties(
@@ -132,6 +157,12 @@ class SenderSynchronousTest {
         assertEquals(HttpStatus.ACCEPTED, response.statusCode())
     }
 
+    /**
+     * Verifies that non-2xx HTTP status codes from the downstream service (e.g., 422
+     * Unprocessable Entity with a validation error body) are propagated to the original
+     * client as-is, confirming that the synchronous sender does not rewrite or mask
+     * application-level errors from the downstream.
+     */
     @Test
     fun `synchronous mode propagates non-2xx downstream response`() {
         val queueClient = mock<MessageQueueClient>()
@@ -157,6 +188,11 @@ class SenderSynchronousTest {
         assertEquals(422, response.statusCode().value())
     }
 
+    /**
+     * Verifies that the correlation ID header is included in the headers forwarded to the
+     * queue client, ensuring the receiver can extract it from the message and use it to
+     * route the response back to the correct waiting sender via the registry.
+     */
     @Test
     fun `correlation ID header is included in forwarded headers`() {
         val queueClient = mock<MessageQueueClient>()

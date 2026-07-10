@@ -21,6 +21,11 @@ class JmsQueueClient(
         private val log = logger()
     }
 
+    /**
+     * Sends [payload] to the JMS destination identified by [endpoint]'s queue name.
+     * HTTP [headers] are mapped to JMS string properties, with non-identifier characters
+     * replaced by underscores to conform to the JMS property-name specification.
+     */
     override fun send(endpoint: QueueEndpointProperties, payload: ByteArray, headers: Map<String, String>) {
         log.debug(
             "Publishing {} bytes via JMS (destination='{}', headers={})",

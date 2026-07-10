@@ -33,6 +33,15 @@ nav:
     - Configuration: configuration.md
     - Error Handling: error-handling.md
     - Deployment: deployment.md
+  - Features:
+    - Sender (REST → Queue): features/sender.md
+    - Receiver (Queue → REST): features/receiver.md
+    - Synchronous Mode: features/synchronous-mode.md
+    - Header Propagation: features/header-propagation.md
+    - Payload Size Limits: features/payload-limits.md
+    - Retry & Dead-Letter Queue: features/retry-and-dlq.md
+    - Message Time-to-Live: features/time-to-live.md
+  - FAQ: faq.md
   - API Docs: dokka/html/index.html
   - Licences: licences/index.html
 

@@ -64,6 +64,14 @@ class SenderJmsIntegrationTest {
     @Autowired
     private lateinit var jmsTemplate: JmsTemplate
 
+    /**
+     * Verifies the full end-to-end flow for JMS: an HTTP POST with a plain-text body and a
+     * custom header is sent to the sender endpoint, resulting in a `202 Accepted` response.
+     * The test then consumes the JMS [BytesMessage] from the real Artemis queue and asserts
+     * that the body is preserved, the custom header (`custom: demo`) is propagated unchanged,
+     * `Content-Type` arrives sanitized as `Content_Type`, and transport headers like `host`
+     * are filtered out before reaching the queue.
+     */
     @Test
     fun `forwards body and HTTP headers (incl custom) onto the JMS queue`() {
         client.post()

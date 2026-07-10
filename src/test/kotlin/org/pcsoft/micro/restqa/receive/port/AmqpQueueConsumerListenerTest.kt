@@ -20,14 +20,16 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Unit tests for the internal listener logic of [AmqpQueueConsumer]:
- * - Retry success scenario (forward succeeds → basicAck)
- * - Retry failure with backoff → basicNack with requeue
- * - Retry exhausted → basicReject (DLQ routing)
- * - X-Retry-Count header propagation
- * - TTL-based message expiry
- * - headersOf extraction
- * - getRetryCount parsing
+ * Unit tests for the internal listener logic of [AmqpQueueConsumer].
+ * Validates the complete message lifecycle including:
+ * - Successful forward → basicAck acknowledgement
+ * - Failed forward with retries remaining → basicNack with requeue
+ * - Retry exhaustion → basicReject to route messages to the dead-letter queue
+ * - X-Retry-Count header propagation to downstream targets
+ * - TTL-based message expiry detection and rejection
+ * - Header extraction from AMQP messages (headersOf utility)
+ * - Retry count parsing from message headers (getRetryCount)
+ * - Connection error handling with requeue behaviour
  */
 class AmqpQueueConsumerListenerTest {
 
@@ -72,6 +74,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── Retry Success ────────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the listener acknowledges (basicAck) a message when the downstream
+     * HTTP forward succeeds on the first attempt. Uses a stubbed WebClient exchange
+     * function that returns HTTP 200 OK to simulate a successful delivery. Ensures no
+     * nack or reject is issued, confirming the message is removed from the queue.
+     */
     @Test
     fun `listener acks message on successful forward (first attempt)`() {
         val receiverProps = receiver()
@@ -107,6 +115,12 @@ class AmqpQueueConsumerListenerTest {
         verify(channel, never()).basicReject(any(), any())
     }
 
+    /**
+     * Verifies that the listener acknowledges a message even when the retry count
+     * header indicates previous failed attempts, as long as the current forward
+     * succeeds. A message with retryCount=2 that is successfully delivered should
+     * be acked normally, proving that retry history does not prevent acknowledgement.
+     */
     @Test
     fun `listener acks message on successful forward after retries (retryCount=2)`() {
         val receiverProps = receiver()
@@ -137,6 +151,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── Retry Failure → Nack (requeue) ──────────────────────────────────────────
 
+    /**
+     * Verifies that the listener issues a basicNack with requeue=true when the
+     * downstream forward fails (HTTP 500) and the message still has retries remaining.
+     * Also confirms the retry count header is incremented from 0 to 1 so the next
+     * delivery attempt carries the updated count, enabling proper retry tracking.
+     */
     @Test
     fun `listener nacks with requeue on forward failure when retries remain`() {
         val receiverProps = receiver(maxRetries = 3, backoffPeriod = Duration.ofMillis(1))
@@ -165,6 +185,12 @@ class AmqpQueueConsumerListenerTest {
         assertEquals(1, message.messageProperties.headers[AmqpQueueConsumer.HEADER_RETRY_COUNT])
     }
 
+    /**
+     * Verifies that the retry count header is correctly incremented on each failed
+     * forward attempt. When a message arrives with retryCount=2 and the forward fails
+     * (HTTP 503), the header must be updated to 3 and the message requeued via basicNack.
+     * This ensures accurate retry tracking across multiple delivery cycles.
+     */
     @Test
     fun `listener increments retry count header on each failed attempt`() {
         val receiverProps = receiver(maxRetries = 5, backoffPeriod = Duration.ofMillis(1))
@@ -196,6 +222,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── Retry Exhausted → DLQ (basicReject) ─────────────────────────────────────
 
+    /**
+     * Verifies that the listener issues a basicReject without requeue when the retry
+     * count equals the configured maximum retries. This routes the message to the
+     * broker's dead-letter queue (DLQ), preventing infinite redelivery loops for
+     * permanently failing messages. No ack or nack should be issued in this case.
+     */
     @Test
     fun `listener rejects to DLQ when max retries exhausted`() {
         val receiverProps = receiver(maxRetries = 3, backoffPeriod = Duration.ofMillis(1))
@@ -226,6 +258,12 @@ class AmqpQueueConsumerListenerTest {
         verify(channel, never()).basicNack(any(), any(), any())
     }
 
+    /**
+     * Verifies that the listener also rejects to DLQ when the retry count exceeds
+     * (not just equals) the configured maximum retries. This guards against edge
+     * cases where the retry count may have been manually set to a value beyond
+     * the maximum, ensuring such messages are not redelivered indefinitely.
+     */
     @Test
     fun `listener rejects to DLQ when retry count exceeds max retries`() {
         val receiverProps = receiver(maxRetries = 2, backoffPeriod = Duration.ofMillis(1))
@@ -255,6 +293,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── X-Retry-Count Header ─────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the X-Retry-Count HTTP header sent to the downstream target
+     * reflects the current retry count from the AMQP message header. When a message
+     * has retryCount=4, the downstream HTTP request must include "X-Retry-Count: 4"
+     * so the target service can observe how many times delivery has been attempted.
+     */
     @Test
     fun `forward receives correct retryCount from AMQP header`() {
         val receiverProps = receiver()
@@ -285,6 +329,12 @@ class AmqpQueueConsumerListenerTest {
         assertEquals("4", capturedRetryCount)
     }
 
+    /**
+     * Verifies that when no retry count header is present on the AMQP message
+     * (first delivery attempt), the downstream HTTP request receives "X-Retry-Count: 0".
+     * This ensures the target service always gets a consistent retry count value,
+     * defaulting to zero for fresh messages.
+     */
     @Test
     fun `forward receives retryCount 0 when no retry header present`() {
         val receiverProps = receiver()
@@ -313,6 +363,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── TTL / isExpired ──────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that a message whose timestamp exceeds the configured time-to-live
+     * is immediately rejected (routed to DLQ) without attempting to forward to the
+     * downstream target. A message timestamped 60 seconds ago with a 5-second TTL
+     * is expired and must not trigger any HTTP call to the target service.
+     */
     @Test
     fun `listener rejects expired message without forwarding`() {
         val receiverProps = receiver(ttl = Duration.ofSeconds(5))
@@ -344,6 +400,12 @@ class AmqpQueueConsumerListenerTest {
         assertFalse(forwardCalled, "Forward should not be called for expired messages")
     }
 
+    /**
+     * Verifies that a message whose timestamp is within the configured time-to-live
+     * window is processed normally (forwarded and acked). A message timestamped 1
+     * second ago with a 5-minute TTL is not expired and should proceed through the
+     * standard forward-and-acknowledge flow.
+     */
     @Test
     fun `listener processes non-expired message normally`() {
         val receiverProps = receiver(ttl = Duration.ofMinutes(5))
@@ -369,6 +431,12 @@ class AmqpQueueConsumerListenerTest {
         verify(channel).basicAck(42L, false)
     }
 
+    /**
+     * Verifies that a message without a timestamp is processed normally even when
+     * TTL is configured. Since the message age cannot be determined without a
+     * timestamp, the listener must not reject it as expired and should proceed
+     * with the standard forward-and-acknowledge flow.
+     */
     @Test
     fun `listener processes message without timestamp when TTL is configured`() {
         val receiverProps = receiver(ttl = Duration.ofSeconds(5))
@@ -395,6 +463,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── headersOf ────────────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that [AmqpQueueConsumer.headersOf] correctly extracts message headers
+     * and includes the Content-Type from message properties. Also confirms that the
+     * internal retry count header (X-Retry-Count) is excluded from the extracted
+     * headers, as it is managed internally and injected separately during forwarding.
+     */
     @Test
     fun `headersOf extracts message headers and content type`() {
         val receiverProps = receiver()
@@ -414,6 +488,12 @@ class AmqpQueueConsumerListenerTest {
         assertFalse(headers.containsKey(AmqpQueueConsumer.HEADER_RETRY_COUNT))
     }
 
+    /**
+     * Verifies that [AmqpQueueConsumer.headersOf] excludes headers with null values
+     * from the extracted map. Null-valued headers can occur when the broker injects
+     * metadata headers without values, and these should not be propagated to avoid
+     * downstream HTTP request issues.
+     */
     @Test
     fun `headersOf excludes null values`() {
         val receiverProps = receiver()
@@ -435,6 +515,12 @@ class AmqpQueueConsumerListenerTest {
 
     // ─── Connection failure ───────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the listener issues a basicNack with requeue=true when the
+     * downstream HTTP call fails with a connection error (e.g., connection refused).
+     * Connection errors are treated as transient failures that warrant a retry,
+     * so the message must be requeued rather than rejected to the DLQ.
+     */
     @Test
     fun `listener nacks with requeue on connection error to downstream`() {
         val receiverProps = receiver(maxRetries = 3, backoffPeriod = Duration.ofMillis(1))

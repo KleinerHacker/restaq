@@ -18,6 +18,11 @@ import org.springframework.amqp.core.MessagePostProcessor
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import kotlin.test.assertEquals
 
+/**
+ * Unit tests for [AmqpQueueClient], verifying that the client correctly translates
+ * endpoint configuration properties and HTTP headers into AMQP-level routing
+ * (exchange, routing key) and message properties via the [RabbitTemplate].
+ */
 @ExtendWith(MockitoExtension::class)
 class AmqpQueueClientTest {
 
@@ -27,6 +32,10 @@ class AmqpQueueClientTest {
     @InjectMocks
     private lateinit var client: AmqpQueueClient
 
+    /**
+     * Verifies that the AMQP queue client routes messages through the configured
+     * exchange using the specified routing key, ensuring proper AMQP topology usage.
+     */
     @Test
     fun `send routes via configured exchange and routing key`() {
         val payload = "hello".toByteArray()
@@ -41,6 +50,11 @@ class AmqpQueueClientTest {
         verify(rabbitTemplate).convertAndSend(eq("orders.exchange"), eq("orders.created"), eq(payload), any<MessagePostProcessor>())
     }
 
+    /**
+     * Verifies that when no explicit exchange or routing key is configured, the client
+     * falls back to the default exchange (empty string) and uses the queue name as
+     * the routing key — the standard RabbitMQ direct-to-queue pattern.
+     */
     @Test
     fun `send falls back to default exchange and queue name when routing is absent`() {
         val payload = "hello".toByteArray()
@@ -51,6 +65,11 @@ class AmqpQueueClientTest {
         verify(rabbitTemplate).convertAndSend(eq(""), eq("orders.queue"), eq(payload), any<MessagePostProcessor>())
     }
 
+    /**
+     * Verifies that HTTP headers passed to the send method are applied as AMQP message
+     * headers via a [MessagePostProcessor], ensuring transparent header propagation
+     * from the REST layer into the messaging infrastructure.
+     */
     @Test
     fun `send applies headers as AMQP message headers`() {
         val payload = "hello".toByteArray()

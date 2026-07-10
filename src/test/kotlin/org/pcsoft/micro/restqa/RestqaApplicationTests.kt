@@ -15,6 +15,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
  */
 class RestqaApplicationTests {
 
+    /**
+     * Tests that the Spring application context loads successfully with the AMQP profile
+     * active and a full sender/receiver configuration. Broker-connecting beans are mocked
+     * to avoid requiring a real RabbitMQ instance.
+     */
     @Nested
     @SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
     @ActiveProfiles("amqp")
@@ -32,11 +37,21 @@ class RestqaApplicationTests {
         @MockitoBean
         private lateinit var amqpQueueConsumer: org.pcsoft.micro.restqa.receive.port.AmqpQueueConsumer
 
+        /**
+         * Verifies that the Spring application context starts cleanly with the AMQP
+         * profile active, all required beans are wired, and no configuration errors occur
+         * when broker beans are replaced by mocks.
+         */
         @Test
         fun contextLoads() {
         }
     }
 
+    /**
+     * Tests that the Spring application context loads successfully with the JMS profile
+     * active and a full sender/receiver configuration. Broker-connecting beans are mocked
+     * and JmsAutoConfiguration is excluded to avoid requiring a real ActiveMQ instance.
+     */
     @Nested
     @SpringBootTest(
         // The mocked JmsTemplate has no message converter, which Boot's
@@ -56,6 +71,11 @@ class RestqaApplicationTests {
         @MockitoBean
         private lateinit var jmsQueueConsumer: org.pcsoft.micro.restqa.receive.port.JmsQueueConsumer
 
+        /**
+         * Verifies that the Spring application context starts cleanly with the JMS
+         * profile active, all required beans are wired, and no configuration errors occur
+         * when broker beans are replaced by mocks and JmsAutoConfiguration is excluded.
+         */
         @Test
         fun contextLoads() {
         }

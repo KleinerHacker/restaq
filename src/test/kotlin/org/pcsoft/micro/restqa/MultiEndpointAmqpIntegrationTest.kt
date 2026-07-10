@@ -102,6 +102,12 @@ class MultiEndpointAmqpIntegrationTest {
 
     // ─── Multiple Senders ─────────────────────────────────────────────────────────
 
+    /**
+     * Verifies that a POST to the orders sender endpoint results in the message
+     * being placed on the orders queue with the correct body content. Confirms
+     * the sender returns HTTP 202 Accepted and the AMQP message payload matches
+     * the original request body exactly.
+     */
     @Test
     fun `orders sender routes to orders queue`() {
         client.post()
@@ -116,6 +122,12 @@ class MultiEndpointAmqpIntegrationTest {
         assertThat(String(message!!.body, Charsets.UTF_8)).isEqualTo("""{"orderId": "ORD-001"}""")
     }
 
+    /**
+     * Verifies that a POST to the invoices sender endpoint results in the message
+     * being placed on the invoices queue with the correct body content. Confirms
+     * that the second sender endpoint operates independently of the first and
+     * routes to its own dedicated queue.
+     */
     @Test
     fun `invoices sender routes to invoices queue`() {
         client.post()
@@ -130,6 +142,12 @@ class MultiEndpointAmqpIntegrationTest {
         assertThat(String(message!!.body, Charsets.UTF_8)).isEqualTo("""{"invoiceId": "INV-042"}""")
     }
 
+    /**
+     * Verifies that messages sent through one sender endpoint do not appear on
+     * another sender's queue. A message posted to the orders endpoint must only
+     * be present on the orders queue, and the invoices queue must remain empty.
+     * This confirms proper routing isolation between configured sender flows.
+     */
     @Test
     fun `senders do not cross-contaminate queues`() {
         client.post()
@@ -149,6 +167,12 @@ class MultiEndpointAmqpIntegrationTest {
 
     // ─── Multiple Receivers ───────────────────────────────────────────────────────
 
+    /**
+     * Verifies that the notifications receiver consumes a message from the
+     * notifications queue and delivers it via HTTP POST to the configured
+     * downstream notifications endpoint. Confirms both the message body and
+     * custom headers are propagated to the target URL.
+     */
     @Test
     fun `notifications receiver delivers to notifications endpoint`() {
         rabbitTemplate.convertAndSend(NOTIFICATIONS_QUEUE, "notification-event".toByteArray()) { msg ->
@@ -165,6 +189,12 @@ class MultiEndpointAmqpIntegrationTest {
         }
     }
 
+    /**
+     * Verifies that the alerts receiver consumes a message from the alerts queue
+     * and delivers it via HTTP POST to the configured downstream alerts endpoint.
+     * Confirms both the message body and custom headers (severity) are propagated
+     * correctly and independently of the notifications receiver.
+     */
     @Test
     fun `alerts receiver delivers to alerts endpoint`() {
         rabbitTemplate.convertAndSend(ALERTS_QUEUE, "critical-alert".toByteArray()) { msg ->
@@ -181,6 +211,12 @@ class MultiEndpointAmqpIntegrationTest {
         }
     }
 
+    /**
+     * Verifies that messages consumed by one receiver are not delivered to another
+     * receiver's target URL. A message placed on the notifications queue must only
+     * trigger a POST to the notifications endpoint; the alerts endpoint must receive
+     * zero requests. This confirms proper consumer isolation between receiver flows.
+     */
     @Test
     fun `receivers do not cross-contaminate targets`() {
         // Reset WireMock to get clean request counts.
@@ -197,6 +233,13 @@ class MultiEndpointAmqpIntegrationTest {
 
     // ─── Full Flow: Sender → Queue → Receiver ────────────────────────────────────
 
+    /**
+     * Verifies the complete sender-to-queue flow when multiple endpoints are configured.
+     * A message sent via the orders sender endpoint (which has no receiver configured in
+     * this test) arrives on the orders queue with both the correct body payload and
+     * propagated custom headers (X-Correlation-Id). Confirms that the full pipeline
+     * from HTTP POST through queue publishing preserves message fidelity.
+     */
     @Test
     fun `full sender to receiver flow works with multiple configured endpoints`() {
         wireMock.resetRequests()

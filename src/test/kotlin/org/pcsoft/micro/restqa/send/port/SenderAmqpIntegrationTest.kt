@@ -58,6 +58,13 @@ class SenderAmqpIntegrationTest {
     @Autowired
     private lateinit var rabbitTemplate: RabbitTemplate
 
+    /**
+     * Verifies the full end-to-end flow: an HTTP POST with a plain-text body and a custom
+     * header is sent to the sender endpoint, resulting in a `202 Accepted` response. The test
+     * then consumes the message from the real RabbitMQ queue and asserts that the body content
+     * is preserved, the custom header (`custom: demo`) is propagated, `Content-Type` is present,
+     * and transport-level headers like `host` are filtered out.
+     */
     @Test
     fun `forwards body and HTTP headers (incl custom) onto the AMQP queue`() {
         client.post()

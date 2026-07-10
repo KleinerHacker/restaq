@@ -88,6 +88,11 @@ class SenderEndpointConfiguration(
         }
     }
 
+    /**
+     * Builds and registers the WebFlux [RouterFunction] that maps each configured
+     * `restqa.sender.<key>.rest.path` to its corresponding [SenderEndpointController].
+     * Returns an empty (no-match) router when no sender flows are configured.
+     */
     @Bean
     fun senderRouter(): RouterFunction<ServerResponse> {
         // An empty builder cannot be built (Spring requires at least one route), so a

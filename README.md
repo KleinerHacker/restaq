@@ -48,6 +48,13 @@ Client ──POST──▶ RESTAQ Sender ──▶ Queue ──▶ RESTAQ Receiv
 - Docker (for integration tests)
 - A message broker (RabbitMQ or ActiveMQ Artemis)
 
+### Clone
+
+```bash
+git clone https://github.com/pcsoftde/restaq.git
+cd restaq
+```
+
 ### Build
 
 ```bash
@@ -89,6 +96,25 @@ restqa:
         backoff-period: 10s
       timeout: 30s
 ```
+
+---
+
+## How to Run in IDE
+
+### IntelliJ IDEA
+
+1. **Import Project** — Open IntelliJ IDEA and select *File → Open*, then choose the `restaq` project directory. Gradle import will start automatically.
+2. **Set JDK** — Ensure JDK 25 is configured under *File → Project Structure → Project → SDK*.
+3. **Run Application** — Navigate to `src/main/kotlin/org/pcsoft/micro/restqa/RestqaApplication.kt`, right-click the `main()` function, and select *Run 'RestqaApplicationKt'*.
+4. **Configuration** — Place your `application.yaml` in `src/main/resources/` or pass Spring profiles via *Run Configuration → VM Options*: `-Dspring.profiles.active=dev`
+5. **Run Tests** — Right-click the `src/test` directory and select *Run All Tests*. Integration tests require Docker to be running for Testcontainers.
+
+### Eclipse / VS Code
+
+1. Import as a Gradle project.
+2. Ensure JDK 25 is on the build path.
+3. Run `RestqaApplication.kt` as a Kotlin/Java Application.
+4. For tests, ensure Docker is running (required by Testcontainers).
 
 ---
 

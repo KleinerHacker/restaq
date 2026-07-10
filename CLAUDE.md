@@ -180,14 +180,28 @@ Logging uses Logback (Spring Boot default).
 
 ### KDocs
 
-All public members must be documented with KDoc comments.
+* All public members in 'main' must be documented with KDoc comments.
+* All tests must be documented with KDoc comments (describe Test in detailed form)
 
 ### MkDocs
 
 * Located in the `docs/` directory
 * Must be reviewed and updated whenever the code changes
+* Contains information:
+  * Architecture
+  * How to configure
+  * How to run
+    * Standalone
+    * Docker
+  * One page for each feature
+  * FAQ
 
 ### README.md
 
 * Contains project description, installation instructions, and usage examples
 * Must be reviewed and updated whenever changes are made
+* Contains information:
+  * Architecture
+  * How to clone and build
+  * How to run in IDE
+  * Feature List

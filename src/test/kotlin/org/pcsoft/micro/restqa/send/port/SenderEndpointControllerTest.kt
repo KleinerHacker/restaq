@@ -19,6 +19,11 @@ import org.springframework.web.reactive.function.server.ServerRequest
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
+/**
+ * Unit tests for [SenderEndpointController] covering the core sender behavior:
+ * successful message forwarding, empty payloads, header propagation, payload size
+ * enforcement, error handling when the queue client fails, and transport header filtering.
+ */
 class SenderEndpointControllerTest {
 
     private val properties = SenderProperties(
@@ -34,6 +39,10 @@ class SenderEndpointControllerTest {
         return ServerRequest.create(exchange, HandlerStrategies.withDefaults().messageReaders())
     }
 
+    /**
+     * Verifies the happy-path: the handler extracts the request body, forwards it to
+     * the configured queue via the queue client, and returns HTTP 202 Accepted to the caller.
+     */
     @Test
     fun `handle forwards the request body to the queue and replies 202 Accepted`() {
         val queueClient = mock<MessageQueueClient>()
@@ -45,6 +54,11 @@ class SenderEndpointControllerTest {
         verify(queueClient).send(eq(properties.queue), eq("hello".toByteArray()), any())
     }
 
+    /**
+     * Verifies that when the HTTP request has no body, the handler forwards an empty
+     * byte array to the queue and still returns HTTP 202 Accepted, ensuring bodyless
+     * requests (e.g., trigger-style calls) are handled gracefully.
+     */
     @Test
     fun `handle forwards an empty payload when there is no body`() {
         val queueClient = mock<MessageQueueClient>()
@@ -56,6 +70,11 @@ class SenderEndpointControllerTest {
         verify(queueClient).send(eq(properties.queue), eq(ByteArray(0)), any())
     }
 
+    /**
+     * Verifies that HTTP headers from the incoming request are propagated to the queue
+     * client as a header map, enabling downstream consumers to access metadata like
+     * trace IDs that were sent by the original caller.
+     */
     @Test
     fun `handle forwards the HTTP headers to the queue`() {
         val queueClient = mock<MessageQueueClient>()
@@ -68,6 +87,11 @@ class SenderEndpointControllerTest {
         assertEquals("abc", captor.firstValue["X-Trace"])
     }
 
+    /**
+     * Verifies that the handler returns HTTP 413 Content Too Large when the request body
+     * exceeds the configured `maxPayloadSize` limit, protecting the messaging system
+     * from oversized messages.
+     */
     @Test
     fun `handle returns 413 when payload exceeds max size`() {
         val queueClient = mock<MessageQueueClient>()
@@ -79,6 +103,11 @@ class SenderEndpointControllerTest {
         assertEquals(HttpStatus.CONTENT_TOO_LARGE, response.statusCode())
     }
 
+    /**
+     * Verifies that a payload within the configured size limit is accepted normally,
+     * resulting in a successful 202 Accepted response — the size check only rejects
+     * payloads that exceed the threshold.
+     */
     @Test
     fun `handle accepts payload within size limit`() {
         val queueClient = mock<MessageQueueClient>()
@@ -89,6 +118,11 @@ class SenderEndpointControllerTest {
         assertEquals(HttpStatus.ACCEPTED, response?.statusCode())
     }
 
+    /**
+     * Verifies that when the queue client throws an exception during message send,
+     * the handler returns HTTP 502 Bad Gateway, signaling to the caller that the
+     * downstream messaging infrastructure is unavailable.
+     */
     @Test
     fun `handle returns 502 when queue client throws exception`() {
         val queueClient = mock<MessageQueueClient>()
@@ -101,6 +135,11 @@ class SenderEndpointControllerTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.statusCode())
     }
 
+    /**
+     * Verifies that transport-level HTTP headers (e.g., `Host`) are filtered out before
+     * forwarding to the queue, while application-level headers (e.g., `X-Trace`) are
+     * preserved. This prevents leaking network topology details into the messaging layer.
+     */
     @Test
     fun `handle excludes transport headers before forwarding`() {
         val queueClient = mock<MessageQueueClient>()

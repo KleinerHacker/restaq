@@ -31,6 +31,12 @@ class ReceiverSynchronousHeaderErrorTest {
         queue = QueueEndpointProperties(name = "orders.queue"),
     )
 
+    /**
+     * Verifies that when the downstream returns 415 Unsupported Media Type (e.g., client
+     * sent XML that downstream doesn't accept), the synchronous response registry is
+     * completed with the error response (status 415, problem body) so the sender receives
+     * it. The forward method itself returns Left to signal delivery failure.
+     */
     @Test
     fun `downstream 415 Unsupported Media Type is fed back to synchronous registry`() {
         val registry = SynchronousResponseRegistry()
@@ -63,6 +69,11 @@ class ReceiverSynchronousHeaderErrorTest {
         assertTrue(String(response.body).contains("Unsupported Media Type"))
     }
 
+    /**
+     * Verifies that when the downstream returns 406 Not Acceptable (client requested a
+     * content type the downstream cannot produce), the synchronous response registry is
+     * completed with the 406 response so the sender gets the error. Forward returns Left.
+     */
     @Test
     fun `downstream 406 Not Acceptable is fed back to synchronous registry`() {
         val registry = SynchronousResponseRegistry()
@@ -90,6 +101,11 @@ class ReceiverSynchronousHeaderErrorTest {
         assertEquals(406, response.statusCode)
     }
 
+    /**
+     * Verifies that when the downstream connection fails entirely (no HTTP response
+     * received), the synchronous response registry is NOT completed. The sender will
+     * timeout instead of receiving a response. Forward returns Left to signal failure.
+     */
     @Test
     fun `downstream connection failure does NOT complete registry (no response to forward)`() {
         val registry = SynchronousResponseRegistry()
@@ -110,6 +126,12 @@ class ReceiverSynchronousHeaderErrorTest {
         assertTrue(!future.isDone)
     }
 
+    /**
+     * Verifies that a non-2xx downstream response (400 Bad Request) in synchronous mode
+     * still completes the registry so the sender receives the error details (status code
+     * and body). The forward method returns Left to indicate delivery failure, which will
+     * cause DLQ routing in the consumer.
+     */
     @Test
     fun `non-2xx downstream response in sync mode still completes registry so sender gets error`() {
         val registry = SynchronousResponseRegistry()
@@ -139,6 +161,12 @@ class ReceiverSynchronousHeaderErrorTest {
         assertEquals("""{"error": "invalid request body"}""", String(response.body))
     }
 
+    /**
+     * Verifies that in synchronous mode, the X-Retry-Count header is NOT injected into
+     * the outgoing HTTP request even when retryCount is non-zero (5). Synchronous messages
+     * should not expose retry metadata to the downstream since retries are not applicable
+     * in request-reply mode.
+     */
     @Test
     fun `sync mode does NOT inject X-Retry-Count even when retryCount is non-zero`() {
         val registry = SynchronousResponseRegistry()

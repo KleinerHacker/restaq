@@ -5,8 +5,21 @@ import java.time.Duration
 import java.util.concurrent.Executors
 import kotlin.test.*
 
+/**
+ * Verifies the behaviour of [SynchronousResponseRegistry], which manages the
+ * correlation between outbound synchronous requests and their asynchronous
+ * responses. Tests cover registration of pending futures, completion with
+ * response data, timeout handling, cleanup of expired entries, and value
+ * equality of [SynchronousResponse].
+ */
 class SynchronousResponseRegistryTest {
 
+    /**
+     * Verifies that each call to [SynchronousResponseRegistry.register] produces
+     * a unique correlation ID and a corresponding incomplete future. Confirms
+     * that the pending count reflects the number of outstanding registrations,
+     * ensuring no ID collisions occur.
+     */
     @Test
     fun `register creates a unique correlation ID and future`() {
         val registry = SynchronousResponseRegistry()
@@ -22,6 +35,12 @@ class SynchronousResponseRegistryTest {
         assertEquals(2, registry.pendingCount())
     }
 
+    /**
+     * Verifies that calling [SynchronousResponseRegistry.complete] with a valid
+     * correlation ID resolves the associated future with the provided response.
+     * The future becomes done, the response data is accessible, and the pending
+     * count drops to zero as the entry is removed from the registry.
+     */
     @Test
     fun `complete resolves a pending future`() {
         val registry = SynchronousResponseRegistry()
@@ -37,6 +56,11 @@ class SynchronousResponseRegistryTest {
         assertEquals(0, registry.pendingCount())
     }
 
+    /**
+     * Verifies that attempting to complete with an unknown correlation ID returns
+     * false without side effects. This handles the case where a response arrives
+     * for a request that was never registered or has already been cleaned up.
+     */
     @Test
     fun `complete returns false for unknown correlation ID`() {
         val registry = SynchronousResponseRegistry()
@@ -46,6 +70,12 @@ class SynchronousResponseRegistryTest {
         assertFalse(result)
     }
 
+    /**
+     * Verifies that [SynchronousResponseRegistry.await] returns the response when
+     * it is completed asynchronously before the timeout expires. Simulates a
+     * delayed completion on a separate thread and confirms the response data
+     * (status code, body, headers) is correctly propagated to the caller.
+     */
     @Test
     fun `await returns response when completed before timeout`() {
         val registry = SynchronousResponseRegistry()
@@ -67,6 +97,11 @@ class SynchronousResponseRegistryTest {
         assertEquals(0, registry.pendingCount())
     }
 
+    /**
+     * Verifies that [SynchronousResponseRegistry.await] returns null when the
+     * timeout elapses before a response is received. This simulates a downstream
+     * service that never responds within the allowed time window.
+     */
     @Test
     fun `await returns null on timeout`() {
         val registry = SynchronousResponseRegistry()
@@ -78,6 +113,11 @@ class SynchronousResponseRegistryTest {
         assertEquals(0, registry.pendingCount())
     }
 
+    /**
+     * Verifies that the registry cleans up the pending entry even when a timeout
+     * occurs, preventing memory leaks. After await times out, the pending count
+     * must be zero regardless of whether the response ever arrives.
+     */
     @Test
     fun `await cleans up pending entry even on timeout`() {
         val registry = SynchronousResponseRegistry()
@@ -89,6 +129,11 @@ class SynchronousResponseRegistryTest {
         assertEquals(0, registry.pendingCount())
     }
 
+    /**
+     * Verifies that completing a correlation ID after the await has already timed
+     * out returns false, because the entry was already removed during timeout
+     * cleanup. This ensures late responses do not corrupt registry state.
+     */
     @Test
     fun `complete after timeout returns false (entry already removed)`() {
         val registry = SynchronousResponseRegistry()
@@ -101,6 +146,11 @@ class SynchronousResponseRegistryTest {
         assertFalse(result)
     }
 
+    /**
+     * Verifies the structural equality and hashCode contract of [SynchronousResponse].
+     * Two instances with identical status code, body content, and headers must be
+     * equal and produce the same hash code, while a differing status code breaks equality.
+     */
     @Test
     fun `SynchronousResponse equals and hashCode`() {
         val r1 = SynchronousResponse(200, "body".toByteArray(), mapOf("A" to "1"))

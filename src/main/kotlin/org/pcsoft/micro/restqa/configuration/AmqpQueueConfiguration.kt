@@ -32,6 +32,12 @@ class AmqpQueueConfiguration(
         private val log = logger()
     }
 
+    /**
+     * Declares all AMQP queues, exchanges, and bindings derived from the configured
+     * sender and receiver flows. Each queue is created as a durable quorum queue.
+     * Exchanges and bindings are only created when a sender/receiver specifies an
+     * explicit [QueueEndpointProperties.exchange][org.pcsoft.micro.restqa.configuration.QueueEndpointProperties.exchange].
+     */
     @Bean
     fun restqaAmqpDeclarables(): Declarables {
         val endpoints = (properties.sender.values.map { it.queue } + properties.receiver.values.map { it.queue })
