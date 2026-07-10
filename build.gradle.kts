@@ -42,7 +42,7 @@ dependencies {
 	testImplementation("org.powermock:powermock-reflect:2.0.9")
 	// Integration tests: real brokers via Testcontainers (predefined modules) + a real
 	// downstream HTTP endpoint via WireMock.
-	testImplementation(platform("org.testcontainers:testcontainers-bom:1.21.3"))
+	testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
 	testImplementation("org.testcontainers:junit-jupiter")
 	testImplementation("org.testcontainers:rabbitmq")        // RabbitMQContainer
 	testImplementation("org.testcontainers:activemq")        // ArtemisContainer
