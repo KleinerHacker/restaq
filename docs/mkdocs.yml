@@ -1,7 +1,8 @@
 site_name: RESTAQ
 site_description: REST in. Queue on. — A lightweight messaging gateway for crossing network boundaries.
 site_url: ""
-docs_dir: docs/docs
+site_dir: ../build/docs
+docs_dir: docs
 
 theme:
   name: material
@@ -27,10 +28,16 @@ theme:
 
 nav:
   - Home: index.md
-  - Architecture: architecture.md
-  - Configuration: configuration.md
-  - Error Handling: error-handling.md
-  - Deployment: deployment.md
+  - Overview:
+    - Architecture: architecture.md
+    - Configuration: configuration.md
+    - Error Handling: error-handling.md
+    - Deployment: deployment.md
+  - API Docs: dokka/html/index.html
+  - Licences: licences/index.html
+
+exclude_docs: |
+  licences/**/*.jar/
 
 markdown_extensions:
   - admonition

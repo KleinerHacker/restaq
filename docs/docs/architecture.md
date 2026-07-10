@@ -49,7 +49,6 @@ Each functional area uses the following sub-package convention:
 |-------------|---------|
 | `port` | REST controllers and queue connection points (adapters) |
 | `configuration` | Queue and REST controller configuration beans |
-| `service` | Domain-internal Spring Boot services |
 | *(root)* | Services exposed for use by other domains |
 
 ### Sender Packages

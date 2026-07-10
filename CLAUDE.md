@@ -1,10 +1,10 @@
 # Requirements
 
-* Project Name: 'Restqa'
+* Project Name: 'RESTAQ'
 
 ## Overview
 
-This project is a service that wraps queue interactions behind a standard REST API.
+This project is a messaging gateway that wraps queue interactions behind a standard REST API.
 
 ### Technical Requirements
 
@@ -15,7 +15,7 @@ This project is a service that wraps queue interactions behind a standard REST A
 * Uses Arrow (`io.arrow-kt:arrow-core`) for error handling
     * `Either<ProblemDetail, T>` as return type in service/queue layers
     * Controllers fold the Either into the appropriate HTTP response
-    * No `Raise`-context or deeper functional patterns – keep it pragmatic
+    * No `Raise`-context or deeper functional patterns — keep it pragmatic
 * Context
     * Microservices
     * Docker
@@ -27,13 +27,12 @@ Use the following sub-package structure within each domain:
 
 * **port** – REST controllers and queue connection points
 * **configuration** – queue and REST controller configuration
-* **service** – domain-internal Spring Boot service classes (generally no components)
 * *Root (no sub-package)* – Spring Boot services exposed for use by other domains
 
 The service is split into two functional areas:
 
 * **sender** – Publishes messages to a queue
-    * Exposed as a REST POST endpoint on the service
+    * Exposed as a REST POST endpoint
         * The request body is forwarded as the queue message body
         * The request headers are forwarded as queue message properties
 * **receiver** – Consumes messages from a queue
@@ -45,7 +44,7 @@ Multiple senders and receivers can be defined through configuration.
 
 ### HTTP Method
 
-Both sender and receiver exclusively use POST. This is by design: if Restaq and the queue are removed from the architecture, the communicating services must be able to talk to each other directly via POST.
+Both sender and receiver exclusively use POST. This is by design: if RESTAQ and the queue are removed from the architecture, the communicating services can talk to each other directly via POST.
 
 ### HTTP Response Behaviour
 
@@ -57,25 +56,27 @@ Both sender and receiver exclusively use POST. This is by design: if Restaq and 
 #### Receiver (callback delivery)
 
 * Successful delivery: the message is acknowledged on the queue
-* Failed delivery (target unreachable, non-2xx response): the message is marked as unprocessed and redelivered according to retry configuration (see below)
+* Failed delivery (target unreachable or non-2xx response): the message is marked as unprocessed and redelivered according to the retry configuration (see below)
 
 ### Header Propagation
 
 All HTTP headers are propagated as queue message properties, with the following exclusions:
 
-* TLS certificate headers (e.g. `X-Forwarded-Client-Cert`)
-* URL/path information (reconstructed by the receiving side)
+* TLS/certificate headers (e.g. `X-Forwarded-Client-Cert`, `X-SSL-*`)
+* Transport headers (e.g. `Host`, `Connection`, `Transfer-Encoding`)
+* Proxy headers (e.g. `Proxy-Authorization`, `Proxy-Authenticate`)
+* Forwarding metadata (e.g. `X-Forwarded-For`, `X-Real-IP`, `Via`, `Forwarded`)
 
-The `Content-Type` header is propagated like any other header.
+The `Content-Type` header is always propagated.
 
-The receiver additionally injects the following headers into the outgoing HTTP request:
+The receiver additionally injects the following header into the outgoing HTTP request:
 
 * `X-Retry-Count` – zero-based delivery attempt counter
 
 ### Payload Handling
 
-* No restriction on content type – any payload is forwarded as-is
-* Maximum payload size is configurable by the operator (see configuration below). If Spring Boot provides built-in mechanisms for request size limiting (e.g. `server.tomcat.max-http-form-post-size`, `spring.servlet.multipart.max-request-size`), those are used. Otherwise a custom size check is implemented.
+* No restriction on content type — any payload is forwarded as-is
+* Maximum payload size is configurable via `restqa.max-payload-size`; requests exceeding this limit receive a **413 Content Too Large** response with Problem Details
 
 ### Schema Validation
 
@@ -89,7 +90,7 @@ Not in scope for the initial implementation. Planned as a future extension.
 
 * Uses `application.yaml` internally
 * All custom configuration lives under the `restqa` namespace
-* Anything not explicitly specified here follows Spring Boot defaults (e.g. broker connection via `spring.rabbitmq.*`, `spring.activemq.*`, `spring.artemis.*`)
+* Anything not explicitly specified here follows Spring Boot defaults (e.g. broker connection via `spring.rabbitmq.*`, `spring.artemis.*`)
 
 ### Queue Type
 
@@ -103,7 +104,7 @@ Not in scope for the initial implementation. Planned as a future extension.
     * `queue`
         * `name` – queue name
     * `rest`
-        * `path` – REST endpoint path, e.g. `/my-sender`
+        * `path` – REST endpoint path, e.g. `/api/orders`
 
 ### Receiver Configuration
 
@@ -113,12 +114,12 @@ Not in scope for the initial implementation. Planned as a future extension.
     * `queue`
         * `name` – queue name
     * `rest`
-        * `url` – target URL, e.g. `http://localhost/my-receiver`
+        * `url` – target URL, e.g. `http://localhost:8080/notify`
     * `retry` (optional)
-        * `max-retries` – maximum number of redelivery attempts before sending to DLQ
+        * `max-retries` – maximum number of delivery attempts before routing to DLQ (default: 3)
         * `backoff-period` – delay between retries (duration format, e.g. `5s`, `30s`)
-    * `time-to-live` (optional) – maximum age of a message before it is discarded to avoid stale delivery (duration format)
-    * `dead-letter` – uses the broker's native dead-letter mechanism (RabbitMQ Dead Letter Exchange / JMS DLQ configuration). No custom DLQ implementation; rely on broker infrastructure.
+    * `time-to-live` (optional) – maximum message age; expired messages are discarded without delivery
+    * Dead-letter handling uses the broker's native mechanism (RabbitMQ Dead Letter Exchange / Artemis DLQ). No custom DLQ implementation.
 
 ### Payload Size
 
@@ -162,9 +163,25 @@ Logging uses Logback (Spring Boot default).
     * JMS and AMQP configurations are tested separately
     * Mockito is not used
     * Assertions validate output data against expected results for given inputs, including external side effects
-        * Verified in WireMock
-        * Verified in the queue
+        * Verified via WireMock
+        * Verified via the queue
 
 ### Coverage
 
-* Target overall code coverage of 100%
+* Target overall code coverage ≥ 90%
+
+## Documentation
+
+### KDocs
+
+All public members must be documented with KDoc comments.
+
+### MkDocs
+
+* Located in the `docs/` directory
+* Must be reviewed and updated whenever the code changes
+
+### README.md
+
+* Contains project description, installation instructions, and usage examples
+* Must be reviewed and updated whenever changes are made

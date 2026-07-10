@@ -129,6 +129,26 @@ mkdocs serve
 
 ---
 
+## CI/CD
+
+The project uses GitHub Actions with two pipelines:
+
+**CI** (`ci.yml`) — triggered on push to `main` and pull requests:
+
+- **Build** — compile and run the full test suite
+- **Licence** — validate dependency licences, generate licence report
+- **Documentation** — build MkDocs in strict mode to verify integrity
+
+**Release** (`release.yml`) — triggered on any tag push:
+
+- **Pre-Check** — verifies that `CHANGELOG.md` contains a matching `# [<tag>]` entry
+- **Build** — compile and test
+- **Licence** — licence check and report
+- **Documentation** — build and deploy versioned docs to GitHub Pages via mike
+- **Release** — create a GitHub Release with changelog notes; tags starting with `0.` or a letter are marked as pre-release
+
+---
+
 ## License
 
 See [LICENSE](LICENSE) for details.
