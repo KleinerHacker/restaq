@@ -22,11 +22,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Compile
-        run: ./gradlew classes testClasses
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
 
-      - name: Test
-        run: ./gradlew test
+      - name: Build
+        run: ./gradlew build -x test --stacktrace --info
+
+      - name: Run tests
+        run: ./gradlew test --stacktrace --info
 
   licence:
     name: Licence
@@ -44,11 +47,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Check
-        run: ./gradlew licensee
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Check licences
+        run: ./gradlew licensee --stacktrace --info
 
       - name: Report
-        run: ./gradlew generateLicenseReport
+        run: ./gradlew generateLicenseReport --stacktrace --info
 
       - name: Upload licence report
         uses: actions/upload-artifact@v4
@@ -73,6 +79,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -85,4 +94,4 @@ jobs:
           path: docs/docs/licences/
 
       - name: Build
-        run: ./gradlew buildDocs
+        run: ./gradlew buildDocs --stacktrace --info
