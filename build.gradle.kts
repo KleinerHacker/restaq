@@ -11,7 +11,7 @@ plugins {
 	// Pinned to 3.2.2: 3.2.3+ regressed on Gradle 9 — io.spring.dependency-management observes
 	// the `cyclonedxDirectBom` configuration as a variant before the plugin registers its artifacts,
 	// which Gradle 9 then rejects ("Cannot mutate ... consumed as a variant"). See cyclonedx #821.
-	id("org.cyclonedx.bom") version "3.2.2"
+	id("org.cyclonedx.bom") version "3.2.4"
 	id("app.cash.licensee") version "1.14.1"
 }
 
