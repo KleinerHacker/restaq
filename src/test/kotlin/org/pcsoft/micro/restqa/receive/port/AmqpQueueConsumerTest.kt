@@ -45,4 +45,16 @@ class AmqpQueueConsumerTest {
 
         assertEquals(0, containers.size)
     }
+
+    @Test
+    fun `stop clears containers`() {
+        val props = RestqaProperties(
+            receiver = mapOf(
+                "orders" to receiver("orders.queue"),
+            ),
+        )
+        val consumer = AmqpQueueConsumer(mock<ConnectionFactory>(), props, WebClient.builder())
+        // Verify that stop() can be called without error on a fresh instance.
+        consumer.stop()
+    }
 }

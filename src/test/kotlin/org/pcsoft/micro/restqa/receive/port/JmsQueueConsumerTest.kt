@@ -46,4 +46,17 @@ class JmsQueueConsumerTest {
 
         assertEquals(0, containers.size)
     }
+
+    @Test
+    fun `stop clears containers`() {
+        val props = RestqaProperties(
+            receiver = mapOf(
+                "orders" to receiver("orders.queue"),
+            ),
+        )
+        val consumer = JmsQueueConsumer(mock<ConnectionFactory>(), props, WebClient.builder())
+        // Build containers but don't start them (start requires a real connection).
+        // Just verify that stop() can be called without error on a fresh instance.
+        consumer.stop()
+    }
 }

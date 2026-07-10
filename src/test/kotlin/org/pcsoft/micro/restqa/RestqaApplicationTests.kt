@@ -16,7 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 class RestqaApplicationTests {
 
     @Nested
-    @SpringBootTest
+    @SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
     @ActiveProfiles("amqp")
     inner class AmqpContext {
 
@@ -42,6 +42,7 @@ class RestqaApplicationTests {
         // The mocked JmsTemplate has no message converter, which Boot's
         // jmsMessagingTemplate auto-config rejects; excluding it keeps the mock clean.
         properties = ["spring.autoconfigure.exclude=org.springframework.boot.jms.autoconfigure.JmsAutoConfiguration"],
+        useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
     )
     @ActiveProfiles("jms")
     inner class JmsContext {
