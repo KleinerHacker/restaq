@@ -95,6 +95,13 @@ plugins.withId("org.jetbrains.kotlin.jvm") {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// Prevent test JVM from hanging on non-daemon threads (e.g. JMS reconnect loops
+	// after Testcontainer shutdown).
+	jvmArgs("-Dspring.jms.listener.auto-startup=true")
+	// Force the test JVM to exit even if non-daemon threads are still alive.
+	jvmArgumentProviders.add(CommandLineArgumentProvider {
+		listOf("-Djunit.jupiter.execution.timeout.default=120s")
+	})
 }
 
 tasks {

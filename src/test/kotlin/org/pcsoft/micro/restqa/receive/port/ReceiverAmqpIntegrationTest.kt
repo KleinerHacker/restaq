@@ -30,6 +30,7 @@ import java.time.Duration
  */
 @SpringBootTest
 @Testcontainers
+@org.springframework.test.annotation.DirtiesContext
 class ReceiverAmqpIntegrationTest {
 
     companion object {

@@ -98,6 +98,7 @@ org.pcsoft.micro.restqa
 - **Header propagation:** HTTP headers become message properties and vice versa, excluding TLS/transport metadata.
 - **Explicit error types:** `Either<ProblemDetail, T>` in the service layer; controllers fold into HTTP responses.
 - **Broker-native DLQ:** RESTAQ does not implement custom dead-letter handling. It relies on RabbitMQ Dead Letter Exchanges or JMS broker DLQ configuration.
+- **Optional synchronous mode:** Senders can optionally wait for the downstream response instead of returning 202 immediately. Correlation is handled via an in-memory registry (`X-Restqa-Correlation-Id`), which requires sender and receiver to share the same JVM instance. The referenced receiver must not have a `rest.url` configured (it acts as a sync-only channel). Synchronous messages have no retry logic — on failure, they are routed directly to the broker's DLQ. This preserves the queue-based architecture while enabling request-reply patterns where needed.
 
 ---
 

@@ -16,6 +16,7 @@ It exposes configurable REST POST endpoints that forward incoming requests into 
 
 - REST → Queue gateway (sender)
 - Queue → REST consumer delivery (receiver)
+- Optional synchronous request-reply mode over queues
 - Supports AMQP and JMS
 - Configurable retry with backoff and dead-letter queue support
 - Message time-to-live enforcement
@@ -70,7 +71,14 @@ restqa:
         path: /api/orders
       queue:
         name: orders.queue
+      synchronous:
+        receiver-ref: order-processor
+      timeout: 30s
   receiver:
+    order-processor:
+      queue:
+        name: orders.queue
+      timeout: 30s
     notifications:
       rest:
         url: http://downstream:8080/notify
@@ -79,6 +87,7 @@ restqa:
       retry:
         max-retries: 5
         backoff-period: 10s
+      timeout: 30s
 ```
 
 ---
@@ -93,11 +102,14 @@ restqa:
 | `restqa.sender.<name>.queue.name` | Queue/destination name | — |
 | `restqa.sender.<name>.queue.exchange` | AMQP exchange (optional) | — |
 | `restqa.sender.<name>.queue.routingKey` | AMQP routing key (optional) | queue name |
-| `restqa.receiver.<name>.rest.url` | Target callback URL | — |
+| `restqa.sender.<name>.synchronous.receiver-ref` | Receiver name for synchronous mode | — |
+| `restqa.sender.<name>.timeout` | Max wait time for synchronous response | `30s` |
+| `restqa.receiver.<name>.rest.url` | Target callback URL (omit for sync-only receivers) | — |
 | `restqa.receiver.<name>.queue.name` | Queue/destination name | — |
-| `restqa.receiver.<name>.retry.max-retries` | Max delivery attempts | `3` |
-| `restqa.receiver.<name>.retry.backoff-period` | Delay between retries | `5s` |
+| `restqa.receiver.<name>.retry.max-retries` | Max delivery attempts (async only) | `3` |
+| `restqa.receiver.<name>.retry.backoff-period` | Delay between retries (async only) | `5s` |
 | `restqa.receiver.<name>.time-to-live` | Max message age | *(none)* |
+| `restqa.receiver.<name>.timeout` | Max processing/wait time | `30s` |
 
 Broker connectivity uses Spring Boot standard properties (`spring.rabbitmq.*` / `spring.artemis.*`).
 

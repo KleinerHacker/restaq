@@ -29,6 +29,7 @@ import java.time.Duration
  */
 @SpringBootTest
 @Testcontainers
+@org.springframework.test.annotation.DirtiesContext
 class ReceiverJmsIntegrationTest {
 
     companion object {

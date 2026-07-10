@@ -47,11 +47,17 @@ data class QueueEndpointProperties(
 
 /**
  * A sender flow. [rest] defines the REST path on which RESTAQ accepts requests to be
- * forwarded into [queue].
+ * forwarded into [queue]. Optionally, [synchronous] enables synchronous request/response
+ * mode where the sender waits for the receiver to process and acknowledge the message.
+ *
+ * [timeout] defines the maximum time the sender will wait for a response — regardless
+ * of whether the flow is synchronous or asynchronous. Default is 30 seconds.
  */
 data class SenderProperties(
     val rest: SenderRestProperties,
     val queue: QueueEndpointProperties,
+    val synchronous: SenderSynchronousProperties? = null,
+    val timeout: Duration = Duration.ofSeconds(30),
 )
 
 /**
@@ -62,25 +68,46 @@ data class SenderRestProperties(
 )
 
 /**
- * A receiver flow. [rest] defines the external REST URL to which a message consumed
- * from [queue] is forwarded.
+ * Synchronous configuration for a sender endpoint.
+ *
+ * When configured, the sender will wait for the referenced receiver to process
+ * the message and wake the sender up, instead of immediately replying with
+ * 202 Accepted.
+ */
+data class SenderSynchronousProperties(
+    /** Name of the receiver flow (map key in `restqa.receiver`) that handles the response. */
+    val receiverRef: String,
+)
+
+/**
+ * A receiver flow. Consumes messages from [queue] and either:
+ * - forwards them via HTTP POST to [rest.url] (asynchronous mode), or
+ * - acknowledges processing back to a waiting sender (synchronous mode, no URL).
+ *
+ * [timeout] defines the maximum time the receiver will wait for the downstream
+ * target to respond (when [rest.url] is set). Default is 30 seconds.
  */
 data class ReceiverProperties(
-    val rest: ReceiverRestProperties,
+    val rest: ReceiverRestProperties = ReceiverRestProperties(),
     val queue: QueueEndpointProperties,
     val retry: RetryProperties = RetryProperties(),
     val timeToLive: Duration? = null,
+    val timeout: Duration = Duration.ofSeconds(30),
 )
 
 /**
  * REST configuration for a receiver endpoint.
+ *
+ * [url] is the target HTTP URL for callback delivery. It is `null` when the receiver
+ * acts as a synchronous response channel (referenced by a sender's `synchronous.receiver-ref`).
  */
 data class ReceiverRestProperties(
-    val url: String,
+    val url: String? = null,
 )
 
 /**
- * Retry configuration for receiver flows.
+ * Retry configuration for receiver flows. Only applies to asynchronous receivers
+ * (those with a configured [ReceiverRestProperties.url]).
  */
 data class RetryProperties(
     val maxRetries: Int = 3,

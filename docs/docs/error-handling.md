@@ -38,13 +38,27 @@ Returned when the message broker is unreachable or rejects the message.
 }
 ```
 
+### 504 Gateway Timeout
+
+Returned when a synchronous sender's timeout expires before the receiver delivers a downstream response.
+
+```json
+{
+  "type": "urn:restqa:error:synchronous-timeout",
+  "title": "Gateway Timeout",
+  "status": 504,
+  "detail": "Synchronous response not received within 30s for receiver 'order-processor'.",
+  "instance": "/api/orders"
+}
+```
+
 ---
 
 ## Receiver Error Behaviour
 
 The receiver does not expose HTTP endpoints itself — it consumes messages and delivers them via HTTP POST. Errors are handled internally:
 
-### Retry Flow
+### Retry Flow (Asynchronous Messages)
 
 1. Message consumed from queue
 2. HTTP POST to target URL
@@ -56,15 +70,29 @@ The receiver does not expose HTTP endpoints itself — it consumes messages and 
     - Log ERROR with stacktrace
     - Reject the message → broker routes to Dead Letter Queue
 
+### Synchronous Message Failures
+
+Synchronous messages (identified by the presence of `X-Restqa-Correlation-Id`) do **not** use retry logic. On delivery failure:
+
+1. Message consumed from queue
+2. HTTP POST to target
+3. On failure (non-2xx or connection error):
+    - Log ERROR with stacktrace
+    - Reject the message → broker routes directly to Dead Letter Queue
+
+No `X-Retry-Count` header is injected for synchronous messages.
+
 ### X-Retry-Count Header
 
-Every outgoing HTTP request from the receiver includes the `X-Retry-Count` header (zero-based integer). This allows downstream services to detect redeliveries:
+Every outgoing HTTP request from the receiver for **asynchronous** messages includes the `X-Retry-Count` header (zero-based integer). This allows downstream services to detect redeliveries:
 
 ```
 X-Retry-Count: 0   (first attempt)
 X-Retry-Count: 1   (first retry)
 X-Retry-Count: 2   (second retry)
 ```
+
+This header is **not** present on synchronous message deliveries.
 
 ### Time-to-Live
 

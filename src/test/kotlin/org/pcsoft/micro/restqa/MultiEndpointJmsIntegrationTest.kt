@@ -38,6 +38,7 @@ import java.time.Duration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
 @AutoConfigureWebTestClient
 @Testcontainers
+@org.springframework.test.annotation.DirtiesContext
 class MultiEndpointJmsIntegrationTest {
 
     companion object {

@@ -9,6 +9,7 @@ import jakarta.jms.MessageListener
 import jakarta.jms.TextMessage
 import org.pcsoft.micro.restqa.configuration.ReceiverProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
+import org.pcsoft.micro.restqa.internal.SynchronousResponseRegistry
 import org.pcsoft.micro.restqa.internal.utils.logger
 import org.slf4j.MDC
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -42,6 +43,7 @@ class JmsQueueConsumer(
     private val connectionFactory: ConnectionFactory,
     private val properties: RestqaProperties,
     private val webClientBuilder: WebClient.Builder,
+    private val synchronousRegistry: SynchronousResponseRegistry? = null,
 ) {
 
     companion object {
@@ -58,12 +60,14 @@ class JmsQueueConsumer(
      */
     internal fun buildContainers(): List<DefaultMessageListenerContainer> =
         properties.receiver.map { (receiverKey, receiverProperties) ->
-            val controller = ReceiverEndpointController(receiverProperties, webClientBuilder.clone().build())
+            val controller = ReceiverEndpointController(receiverProperties, webClientBuilder.clone().build(), synchronousRegistry)
             DefaultMessageListenerContainer().apply {
                 setConnectionFactory(this@JmsQueueConsumer.connectionFactory)
                 destinationName = receiverProperties.queue.name
                 isPubSubDomain = false
                 isSessionTransacted = true
+                // Use a short recovery interval so that shutdown is not blocked by long sleeps.
+                setRecoveryInterval(1000)
                 messageListener = listener(receiverKey, receiverProperties, controller)
             }
         }
@@ -74,7 +78,9 @@ class JmsQueueConsumer(
         controller: ReceiverEndpointController,
     ) = MessageListener { message: Message ->
         MDC.putCloseable(MDC_RECEIVER, receiverKey).use {
-            val retryCount = getRetryCount(message)
+            val headers = headersOf(message)
+            val isSynchronous = headers.containsKey(SynchronousResponseRegistry.HEADER_CORRELATION_ID)
+            val retryCount = if (isSynchronous) 0 else getRetryCount(message)
 
             // TTL check: acknowledge stale messages without forwarding.
             if (isExpired(message, receiverProperties.timeToLive)) {
@@ -85,11 +91,17 @@ class JmsQueueConsumer(
 
             log.info("Message consumed from destination '{}' (attempt {})", receiverProperties.queue.name, retryCount)
 
-            val result = controller.forward(payloadOf(message), headersOf(message), retryCount)
+            val result = controller.forward(payloadOf(message), headers, retryCount)
 
             result.fold(
                 ifLeft = { ex ->
-                    handleFailure(retryCount, receiverProperties, ex)
+                    if (isSynchronous) {
+                        // Synchronous: no retry, throw immediately to let broker route to DLQ.
+                        log.error("Synchronous message delivery failed for destination '{}', routing to DLQ", receiverProperties.queue.name, ex)
+                        throw RuntimeException("Synchronous delivery failed", ex)
+                    } else {
+                        handleFailure(retryCount, receiverProperties, ex)
+                    }
                 },
                 ifRight = {
                     // Success – transacted session will commit automatically.
@@ -166,7 +178,10 @@ class JmsQueueConsumer(
 
     @PreDestroy
     internal fun stop() {
-        containers.forEach { it.stop() }
+        containers.forEach {
+            it.stop()
+            it.shutdown()
+        }
         containers.clear()
     }
 }

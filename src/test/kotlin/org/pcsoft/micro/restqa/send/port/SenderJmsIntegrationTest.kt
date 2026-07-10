@@ -28,6 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @Testcontainers
+@org.springframework.test.annotation.DirtiesContext
 class SenderJmsIntegrationTest {
 
     companion object {

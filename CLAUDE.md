@@ -105,6 +105,10 @@ Not in scope for the initial implementation. Planned as a future extension.
         * `name` – queue name
     * `rest`
         * `path` – REST endpoint path, e.g. `/api/orders`
+    * `synchronous` (optional)
+        * `receiver-ref` – name of the receiver that handles the response (enables synchronous mode)
+    * `timeout` (optional) – maximum wait time (default: `30s`)
+    * Note: Synchronous mode requires sender and receiver to run in the same JVM instance. Correlation uses the `X-Restqa-Correlation-Id` header and an in-memory registry.
 
 ### Receiver Configuration
 
@@ -113,13 +117,15 @@ Not in scope for the initial implementation. Planned as a future extension.
 * Required properties:
     * `queue`
         * `name` – queue name
-    * `rest`
-        * `url` – target URL, e.g. `http://localhost:8080/notify`
-    * `retry` (optional)
+    * `rest` (conditional)
+        * `url` – target URL, e.g. `http://localhost:8080/notify`. Must be omitted for sync-only receivers.
+    * `retry` (optional, async only)
         * `max-retries` – maximum number of delivery attempts before routing to DLQ (default: 3)
         * `backoff-period` – delay between retries (duration format, e.g. `5s`, `30s`)
     * `time-to-live` (optional) – maximum message age; expired messages are discarded without delivery
+    * `timeout` (optional) – maximum processing/wait time (default: `30s`)
     * Dead-letter handling uses the broker's native mechanism (RabbitMQ Dead Letter Exchange / Artemis DLQ). No custom DLQ implementation.
+    * **Sync-only receiver:** A receiver without `rest.url` must be referenced by at least one sender's `synchronous.receiver-ref`. Correlation is automatic via `X-Restqa-Correlation-Id` header presence. No retry logic is applied — on failure, messages go directly to DLQ.
 
 ### Payload Size
 

@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import org.pcsoft.micro.restqa.configuration.ReceiverProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
+import org.pcsoft.micro.restqa.internal.SynchronousResponseRegistry
 import org.pcsoft.micro.restqa.internal.utils.logger
 import org.slf4j.MDC
 import org.springframework.amqp.core.AcknowledgeMode
@@ -40,6 +41,7 @@ class AmqpQueueConsumer(
     private val connectionFactory: ConnectionFactory,
     private val properties: RestqaProperties,
     private val webClientBuilder: WebClient.Builder,
+    private val synchronousRegistry: SynchronousResponseRegistry? = null,
 ) {
 
     companion object {
@@ -59,7 +61,7 @@ class AmqpQueueConsumer(
      */
     internal fun buildContainers(): List<SimpleMessageListenerContainer> =
         properties.receiver.map { (receiverKey, receiverProperties) ->
-            val controller = ReceiverEndpointController(receiverProperties, webClientBuilder.clone().build())
+            val controller = ReceiverEndpointController(receiverProperties, webClientBuilder.clone().build(), synchronousRegistry)
             SimpleMessageListenerContainer(connectionFactory).apply {
                 setQueueNames(receiverProperties.queue.name)
                 acknowledgeMode = AcknowledgeMode.MANUAL
@@ -75,7 +77,9 @@ class AmqpQueueConsumer(
     ) = ChannelAwareMessageListener { message: Message, channel: Channel? ->
         MDC.putCloseable(MDC_RECEIVER, receiverKey).use {
             val deliveryTag = message.messageProperties.deliveryTag
-            val retryCount = getRetryCount(message)
+            val headers = headersOf(message)
+            val isSynchronous = headers.containsKey(SynchronousResponseRegistry.HEADER_CORRELATION_ID)
+            val retryCount = if (isSynchronous) 0 else getRetryCount(message)
 
             // TTL check: discard stale messages.
             if (isExpired(message, receiverProperties.timeToLive)) {
@@ -86,11 +90,17 @@ class AmqpQueueConsumer(
 
             log.info("Message consumed from queue '{}' (attempt {})", receiverProperties.queue.name, retryCount)
 
-            val result = controller.forward(message.body, headersOf(message), retryCount)
+            val result = controller.forward(message.body, headers, retryCount)
 
             result.fold(
                 ifLeft = { ex ->
-                    handleFailure(channel, message, deliveryTag, retryCount, receiverProperties, ex)
+                    if (isSynchronous) {
+                        // Synchronous: no retry, reject directly to DLQ.
+                        log.error("Synchronous message delivery failed for queue '{}', rejecting to DLQ", receiverProperties.queue.name, ex)
+                        channel?.basicReject(deliveryTag, false)
+                    } else {
+                        handleFailure(channel, message, deliveryTag, retryCount, receiverProperties, ex)
+                    }
                 },
                 ifRight = {
                     channel?.basicAck(deliveryTag, false)
@@ -158,7 +168,10 @@ class AmqpQueueConsumer(
 
     @PreDestroy
     internal fun stop() {
-        containers.forEach { it.stop() }
+        containers.forEach {
+            it.stop()
+            it.destroy()
+        }
         containers.clear()
     }
 }

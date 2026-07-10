@@ -6,6 +6,7 @@ import org.pcsoft.micro.restqa.configuration.QueueEndpointProperties
 import org.pcsoft.micro.restqa.configuration.RestqaProperties
 import org.pcsoft.micro.restqa.configuration.SenderProperties
 import org.pcsoft.micro.restqa.configuration.SenderRestProperties
+import org.pcsoft.micro.restqa.internal.SynchronousResponseRegistry
 import org.pcsoft.micro.restqa.send.port.MessageQueueClient
 import org.springframework.http.HttpStatus
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
@@ -39,7 +40,7 @@ class SenderEndpointConfigurationTest {
             ),
         )
 
-        val router = SenderEndpointConfiguration(props, mock<MessageQueueClient>()).senderRouter()
+        val router = SenderEndpointConfiguration(props, mock<MessageQueueClient>(), SynchronousResponseRegistry()).senderRouter()
 
         assertNotNull(router.route(requestFor("/api/orders")).block())
         assertNotNull(router.route(requestFor("/api/invoices")).block())
@@ -48,7 +49,7 @@ class SenderEndpointConfigurationTest {
 
     @Test
     fun `empty sender config produces a router that matches nothing`() {
-        val router = SenderEndpointConfiguration(RestqaProperties(), mock<MessageQueueClient>()).senderRouter()
+        val router = SenderEndpointConfiguration(RestqaProperties(), mock<MessageQueueClient>(), SynchronousResponseRegistry()).senderRouter()
 
         assertNull(router.route(requestFor("/api/orders")).block())
     }
@@ -58,7 +59,7 @@ class SenderEndpointConfigurationTest {
         val props = RestqaProperties(
             sender = mapOf("orders" to sender("/api/orders")),
         )
-        val config = SenderEndpointConfiguration(props, mock<MessageQueueClient>())
+        val config = SenderEndpointConfiguration(props, mock<MessageQueueClient>(), SynchronousResponseRegistry())
 
         // Call the private @PostConstruct init() method via reflection.
         val method = SenderEndpointConfiguration::class.java.getDeclaredMethod("init")
@@ -72,7 +73,7 @@ class SenderEndpointConfigurationTest {
         val props = RestqaProperties(
             sender = mapOf("orders" to sender("/api/orders")),
         )
-        val config = SenderEndpointConfiguration(props, queueClient)
+        val config = SenderEndpointConfiguration(props, queueClient, SynchronousResponseRegistry())
         val router = config.senderRouter()
 
         val request = requestFor("/api/orders", "payload")
