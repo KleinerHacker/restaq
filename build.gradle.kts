@@ -5,7 +5,7 @@ plugins {
 	kotlin("plugin.spring") version "2.3.21"
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
-	id("org.jetbrains.kotlinx.kover") version "0.9.1"
+	id("org.jetbrains.kotlinx.kover") version "0.9.8"
 	id("org.jetbrains.dokka") version "2.2.0"
 	id("com.github.jk1.dependency-license-report") version "2.5"
 	// Pinned to 3.2.2: 3.2.3+ regressed on Gradle 9 — io.spring.dependency-management observes
