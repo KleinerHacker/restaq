@@ -38,7 +38,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-webtestclient")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:6.3.0")
 	testImplementation("org.powermock:powermock-reflect:2.0.9")
 	// Integration tests: real brokers via Testcontainers (predefined modules) + a real
 	// downstream HTTP endpoint via WireMock.
