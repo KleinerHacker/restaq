@@ -34,7 +34,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.springframework.boot:spring-boot-starter-artemis")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
-	implementation("io.arrow-kt:arrow-core:2.1.2")
+	implementation("io.arrow-kt:arrow-core:2.2.3")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-webtestclient")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
